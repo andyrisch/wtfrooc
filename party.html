@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RO Guild - Party System</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root { --bg: #1a0000; --card: #2a0a0a; --text: #f1f5f9; --primary: #dc2626; }
+        body { font-family: 'Tahoma', sans-serif; background: var(--bg); color: var(--text); padding: 20px; text-align: center; }
+        .header { background: #3b0000; padding: 20px; border-radius: 12px; border-bottom: 4px solid var(--primary); margin-bottom: 20px; }
+        .debug-log { background: #000; color: #10b981; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; margin-bottom: 15px; text-align: left; max-height: 100px; overflow-y: auto; border: 1px solid #333; }
+        .input-box { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #7f1d1d; display: inline-block; width: 100%; max-width: 500px; }
+        input, select { padding: 12px; border-radius: 8px; border: 1px solid #7f1d1d; background: #000; color: #fff; margin: 5px; width: 80%; outline: none; }
+        button { padding: 12px 30px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #ef4444; }
+        .list-container { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .member-card { background: #3b0000; padding: 10px 15px; border-radius: 10px; border: 1px solid var(--primary); display: flex; align-items: center; gap: 10px; }
+        .del-btn { color: #f87171; cursor: pointer; font-weight: bold; border: none; background: none; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>⚔️ จัดปาร์ตี้กิลด์ (Cloud Sync)</h1>
+    <div id="status">🔴 สถานะ: กำลังโหลด...</div>
+</div>
+
+<div class="debug-log" id="debug">System: เริ่มต้นการทำงาน...</div>
+
+<div class="input-box">
+    <input type="text" id="charName" placeholder="ใส่ชื่อตัวละคร...">
+    <select id="charJob">
+        <option value="">-- เลือกอาชีพ --</option>
+        <option value="Lord Knight">Lord Knight</option>
+        <option value="Paladin">Paladin</option>
+        <option value="High Priest">High Priest</option>
+        <option value="Sniper">Sniper</option>
+        <option value="High Wizard">High Wizard</option>
+        <option value="Assassin Cross">Assassin Cross</option>
+        <option value="Mastersmith">Mastersmith</option>
+    </select>
+    <br>
+    <button onclick="addMember()">➕ เพิ่มสมาชิกลงคลัง</button>
+</div>
+
+<div class="list-container" id="memberList"></div>
+
+<script>
+    // 1. ตั้งค่า Config
+    const config = {
+        apiKey: "AIzaSyDbWABEMg6W4W0gBu3oXQC67p5ilQbRY-o",
+        authDomain: "party-20966.firebaseapp.com",
+        databaseURL: "https://party-20966-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "party-20966",
+        storageBucket: "party-20966.firebasestorage.app",
+        messagingSenderId: "760995927532",
+        appId: "1:760995927532:web:3b3b14f6b5271d8b155cc9"
+    };
+
+    // ตัวแปรเก็บข้อมูล
+    let state = { pool: [] };
+    let dbRef = null;
+
+    function log(msg) {
+        const d = document.getElementById('debug');
+        d.innerHTML += "<br>> " + msg;
+        d.scrollTop = d.scrollHeight;
+    }
+
+    // 2. เริ่มต้นระบบ
+    window.onload = function() {
+        try {
+            firebase.initializeApp(config);
+            dbRef = firebase.database().ref('guild_party2');
+            log("Firebase: เชื่อมต่อสำเร็จ");
+
+            // เช็กสถานะ Online
+            firebase.database().ref(".info/connected").on("value", (snap) => {
+                const statusEl = document.getElementById('status');
+                if (snap.val() === true) {
+                    statusEl.innerHTML = "🟢 สถานะ: ออนไลน์ (Cloud Connected)";
+                    statusEl.style.color = "#10b981";
+                } else {
+                    statusEl.innerHTML = "🔴 สถานะ: ออฟไลน์ (Check Internet/Rules)";
+                    statusEl.style.color = "#f87171";
+                }
+            });
+
+            // ดึงข้อมูลมาแสดงผล (Sync)
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                log("Data: ได้รับข้อมูลจาก Cloud");
+                if (data && data.pool) {
+                    state.pool = data.pool;
+                } else {
+                    state.pool = [];
+                }
+                render();
+            });
+
+        } catch (e) {
+            log("Error: " + e.message);
+        }
+    };
+
+    // 3. ฟังก์ชันเพิ่มสมาชิก
+    function addMember() {
+        log("Action: กำลังกดเพิ่ม...");
+        const nameInput = document.getElementById('charName');
+        const jobInput = document.getElementById('charJob');
+        
+        const name = nameInput.value.trim();
+        const job = jobInput.value;
+
+        if (!name || !job) {
+            alert("กรุณาใส่ชื่อและอาชีพด้วยครับ!");
+            log("Action: ยกเลิก (ข้อมูลไม่ครบ)");
+            return;
+        }
+
+        const newMember = {
+            id: Date.now().toString(),
+            name: name,
+            job: job
+        };
+
+        state.pool.push(newMember);
+        log("Action: เพิ่ม " + name + " ลงในรายการชั่วคราว");
+
+        saveToCloud();
+        nameInput.value = "";
+        nameInput.focus();
+    }
+
+    // 4. ฟังก์ชันลบสมาชิก
+    function deleteMember(id) {
+        state.pool = state.pool.filter(m => m.id !== id);
+        saveToCloud();
+    }
+
+    // 5. ส่งข้อมูลขึ้น Cloud
+    function saveToCloud() {
+        log("Cloud: กำลังบันทึกข้อมูล...");
+        dbRef.set({
+            pool: state.pool,
+            last_updated: Date.now()
+        }).then(() => {
+            log("Cloud: บันทึกสำเร็จ ✅");
+        }).catch((err) => {
+            log("Cloud Error: " + err.message);
+            alert("บันทึกไม่ได้! กรุณาเช็ก Rules ใน Firebase Console");
+        });
+    }
+
+    // 6. แสดงผลบนหน้าจอ
+    function render() {
+        const listEl = document.getElementById('memberList');
+        listEl.innerHTML = "";
+
+        if (state.pool.length === 0) {
+            listEl.innerHTML = "<p style='color:#666'>ยังไม่มีสมาชิกในคลัง</p>";
+            return;
+        }
+
+        state.pool.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'member-card';
+            card.innerHTML = `
+                <span><strong>${m.name}</strong> (${m.job})</span>
+                <button class="del-btn" onclick="deleteMember('${m.id}')">✕</button>
+            `;
+            listEl.appendChild(card);
+        });
+    }
+</script>
+
+</body>
+</html>
