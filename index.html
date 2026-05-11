@@ -6,6 +6,8 @@
     <title>RO Guild Queue - Cloud System</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- SortableJS for drag-to-reorder -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --primary: #38bdf8; --accent: #f59e0b; --danger: #ef4444; --text: #f1f5f9; }
         body { font-family: 'Tahoma', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -22,10 +24,24 @@
         .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
         input[type="text"] { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; }
         .btn-add { background: var(--primary); color: #0f172a; font-weight: bold; border: none; border-radius: 8px; padding: 0 20px; cursor: pointer; }
-        .queue-list { display: flex; flex-direction: column; gap: 10px; }
-        .item { background: #1e293b; padding: 15px; border-radius: 10px; border: 1px solid #334155; transition: 0.3s; }
+        .queue-list { display: flex; flex-direction: column; gap: 10px; min-height: 20px; }
+
+        /* Queue items */
+        .item { background: #1e293b; padding: 15px; border-radius: 10px; border: 1px solid #334155; transition: 0.2s; cursor: grab; }
+        .item:active { cursor: grabbing; }
         .item.active-feather { border: 2px solid var(--danger); background: #450a0a; }
         .item.active-album { border: 2px solid var(--accent); background: #45290a; }
+
+        /* Drag states */
+        .item.sortable-ghost { opacity: 0.3; background: #334155; }
+        .item.sortable-drag  { opacity: 0.95; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transform: rotate(1deg); }
+        .queue-list.drag-active { background: rgba(56,189,248,0.05); border-radius: 10px; }
+
+        /* Drag handle hint */
+        .item::before { content: '⠿'; position: absolute; left: 6px; top: 50%; transform: translateY(-50%); color: #475569; font-size: 1rem; opacity: 0; transition: opacity 0.2s; }
+        .item { position: relative; padding-left: 18px; }
+        .item:hover::before { opacity: 1; }
+
         .item-row { display: flex; justify-content: space-between; align-items: center; }
         .name-tag { font-size: 1.1rem; font-weight: bold; }
         .badge { font-size: 0.9rem; margin-top: 6px; display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: bold; }
@@ -33,6 +49,9 @@
         .btn-loop { background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
         .btn-del { background: transparent; color: #64748b; border: 1px solid #334155; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
         .status-cloud { font-size: 0.7rem; color: #10b981; margin-top: 5px; }
+
+        /* Drag hint label */
+        .drag-hint { font-size: 0.72rem; color: #475569; text-align: right; margin-bottom: 6px; }
     </style>
 </head>
 <body>
@@ -61,6 +80,7 @@
                 <input type="text" id="fInput" placeholder="เพิ่มชื่อ..." onkeypress="if(event.key==='Enter') add('feather')">
                 <button class="btn-add" onclick="add('feather')">เพิ่ม</button>
             </div>
+            <div class="drag-hint">☰ ลากเพื่อเรียงลำดับ</div>
             <div id="fList" class="queue-list"></div>
         </div>
         <div class="card">
@@ -69,26 +89,30 @@
                 <input type="text" id="aInput" placeholder="เพิ่มชื่อ..." onkeypress="if(event.key==='Enter') add('album')">
                 <button class="btn-add" style="background:var(--accent)" onclick="add('album')">เพิ่ม</button>
             </div>
+            <div class="drag-hint">☰ ลากเพื่อเรียงลำดับ</div>
             <div id="aList" class="queue-list"></div>
         </div>
     </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBYrNg9viyiItkFuNes3Bn2yqv4E82ubVs",
-        authDomain: "ro-guild-queue.firebaseapp.com",
-        databaseURL: "https://ro-guild-queue-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "ro-guild-queue",
-        storageBucket: "ro-guild-queue.firebasestorage.app",
-        messagingSenderId: "506020314747",
-        appId: "1:506020314747:web:d2afa06df8fd6179f32cde"
-    };
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp({
+            apiKey: "AIzaSyBYrNg9viyiItkFuNes3Bn2yqv4E82ubVs",
+            authDomain: "ro-guild-queue.firebaseapp.com",
+            databaseURL: "https://ro-guild-queue-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ro-guild-queue",
+            storageBucket: "ro-guild-queue.firebasestorage.app",
+            messagingSenderId: "506020314747",
+            appId: "1:506020314747:web:d2afa06df8fd6179f32cde"
+        });
+    }
     const dbRef = firebase.database().ref('guild_queue');
     let localDb = { feather: [], album: [] };
+    let isSaving = false; // prevent re-render loop while dragging
 
     dbRef.on('value', (snap) => {
+        if (isSaving) return; // skip remote update while we're mid-drag-save
         const data = snap.val();
         if (data) {
             localDb = data.queues || {};
@@ -101,11 +125,12 @@
     });
 
     function saveCloudData() {
+        isSaving = true;
         dbRef.set({
             queues: localDb,
             fStock: document.getElementById('fStock').value,
             aStock: document.getElementById('aStock').value
-        });
+        }).then(() => { isSaving = false; });
     }
 
     function add(type) {
@@ -115,18 +140,21 @@
         localDb[type].push(input.value.trim());
         input.value = '';
         saveCloudData();
+        render(); // immediate local render
     }
 
     function moveToEnd(type, index) {
         let name = localDb[type].splice(index, 1)[0];
         localDb[type].push(name);
         saveCloudData();
+        render();
     }
 
     function remove(type, index) {
         if (confirm("ลบคิวนี้?")) {
             localDb[type].splice(index, 1);
             saveCloudData();
+            render();
         }
     }
 
@@ -134,38 +162,66 @@
         const fStock = parseInt(document.getElementById('fStock').value) || 0;
         const aStock = parseInt(document.getElementById('aStock').value) || 0;
 
-        const fList = document.getElementById('fList');
-        fList.innerHTML = '';
-        (localDb.feather || []).forEach((name, i) => {
-            const isActive = (i + 1) <= fStock;
-            fList.innerHTML += `<div class="item ${isActive ? 'active-feather' : ''}">
-                <div class="item-row">
-                    <span class="name-tag">${i+1}. ${name}</span>
-                    <div class="actions">
-                        <button class="btn-loop" onclick="moveToEnd('feather',${i})">✔️ วนคิว</button>
-                        <button class="btn-del" onclick="remove('feather',${i})">ลบ</button>
-                    </div>
-                </div>
-                ${isActive ? `<span class="badge" style="background:#0f172a;color:#38bdf8">หน้าที่ ${i+1}</span>` : ''}
-            </div>`;
-        });
+        renderList('fList', localDb.feather, 'feather', fStock, 'active-feather', '#38bdf8', 'หน้าที่');
+        renderList('aList', localDb.album,   'album',   aStock, 'active-album',   '#f59e0b', 'เล่มที่');
+    }
 
-        const aList = document.getElementById('aList');
-        aList.innerHTML = '';
-        (localDb.album || []).forEach((name, i) => {
-            const isActive = (i + 1) <= aStock;
-            aList.innerHTML += `<div class="item ${isActive ? 'active-album' : ''}">
+    function renderList(containerId, arr, type, stock, activeClass, badgeColor, badgeLabel) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        (arr || []).forEach((name, i) => {
+            const isActive = (i + 1) <= stock;
+            const div = document.createElement('div');
+            div.className = `item ${isActive ? activeClass : ''}`;
+            div.dataset.index = i;
+            div.innerHTML = `
                 <div class="item-row">
-                    <span class="name-tag">${i+1}. ${name}</span>
+                    <span class="name-tag">${i + 1}. ${name}</span>
                     <div class="actions">
-                        <button class="btn-loop" onclick="moveToEnd('album',${i})">✔️ วนคิว</button>
-                        <button class="btn-del" onclick="remove('album',${i})">ลบ</button>
+                        <button class="btn-loop" onclick="moveToEnd('${type}',${i})">✔️ วนคิว</button>
+                        <button class="btn-del" onclick="remove('${type}',${i})">ลบ</button>
                     </div>
                 </div>
-                ${isActive ? `<span class="badge" style="background:#0f172a;color:#f59e0b">เล่มที่ ${i+1}</span>` : ''}
-            </div>`;
+                ${isActive ? `<span class="badge" style="background:#0f172a;color:${badgeColor}">${badgeLabel} ${i + 1}</span>` : ''}
+            `;
+            container.appendChild(div);
         });
     }
+
+    // ── Sortable init ────────────────────────────────────────
+    function initSortable(listId, type) {
+        Sortable.create(document.getElementById(listId), {
+            animation: 180,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onStart: function() {
+                document.getElementById(listId).classList.add('drag-active');
+            },
+            onEnd: function(evt) {
+                document.getElementById(listId).classList.remove('drag-active');
+                const oldIdx = evt.oldIndex;
+                const newIdx = evt.newIndex;
+                if (oldIdx === newIdx) return;
+
+                // Reorder localDb array
+                const arr = localDb[type];
+                const [moved] = arr.splice(oldIdx, 1);
+                arr.splice(newIdx, 0, moved);
+
+                saveCloudData();
+                render(); // re-render to update numbers/badges
+            }
+        });
+    }
+
+    // Init sortables after DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+        initSortable('fList', 'feather');
+        initSortable('aList', 'album');
+    });
+
+    // Initial render trigger (in case Firebase fires before DOM ready)
+    render();
 </script>
 </body>
 </html>

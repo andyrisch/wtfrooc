@@ -7,46 +7,47 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; }
+        :root { --bg: #1a0000; --card: #2a0a0a; --text: #f1f5f9; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Tahoma', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { max-width: 1300px; margin: 0 auto; }
 
         /* Header */
-        .header { text-align: center; background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 24px; border-bottom: 4px solid #7c3aed; }
+        .header { text-align: center; background: #3b0000; padding: 20px; border-radius: 12px; margin-bottom: 24px; border-bottom: 4px solid #dc2626; }
         .header h1 { font-size: 1.5rem; margin-bottom: 6px; }
         .status-cloud { font-size: 0.7rem; color: #10b981; margin-bottom: 8px; }
-        .btn-back { display: inline-block; background: #334155; color: #f1f5f9; font-weight: bold; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
+        .btn-back { display: inline-block; background: #4b1010; color: #f1f5f9; font-weight: bold; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
 
         /* Add form */
-        .add-card { background: var(--card); padding: 18px 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #334155; }
-        .add-card h2 { color: #a78bfa; margin-bottom: 14px; font-size: 1rem; }
+        .add-card { background: #2a0a0a; padding: 18px 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #7f1d1d; }
+        .add-card h2 { color: #fca5a5; margin-bottom: 14px; font-size: 1rem; }
         .add-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        .add-row input, .add-row select { flex: 1; min-width: 140px; padding: 10px 13px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; outline: none; font-size: 0.95rem; }
-        .btn-add-member { background: #7c3aed; color: white; font-weight: bold; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; white-space: nowrap; }
-        .btn-add-member:hover { background: #6d28d9; }
+        .add-row input, .add-row select { flex: 1; min-width: 140px; padding: 10px 13px; border-radius: 8px; border: 1px solid #7f1d1d; background: #1a0000; color: white; outline: none; font-size: 0.95rem; }
+        .add-row select option { background: #1a0000; }
+        .btn-add-member { background: #dc2626; color: white; font-weight: bold; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; white-space: nowrap; font-size: 0.95rem; }
+        .btn-add-member:hover { background: #b91c1c; }
 
         /* Parties section */
-        .section-title { font-size: 0.85rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+        .section-title { font-size: 0.85rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
         .parties-wrap { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; align-items: flex-start; }
 
-        .party-box { background: var(--card); border-radius: 12px; border: 2px solid #334155; min-width: 220px; width: 220px; transition: border-color 0.2s; }
-        .party-box.drag-over { border-color: #7c3aed; background: #1e1b4b; }
+        .party-box { background: #2a0a0a; border-radius: 12px; border: 2px solid #7f1d1d; min-width: 220px; width: 220px; transition: border-color 0.2s; }
+        .party-box.drag-over { border-color: #f87171; background: #3b0f0f; }
 
-        .party-header { padding: 10px 12px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-        .party-name-display { font-weight: bold; color: #a78bfa; cursor: pointer; flex: 1; font-size: 0.95rem; }
+        .party-header { padding: 10px 12px; border-bottom: 1px solid #7f1d1d; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .party-name-display { font-weight: bold; color: #fca5a5; cursor: pointer; flex: 1; font-size: 0.95rem; }
         .party-name-display:hover { text-decoration: underline; }
-        .party-name-input { flex: 1; background: #0f172a; border: 1px solid #7c3aed; color: white; border-radius: 5px; padding: 3px 7px; font-size: 0.9rem; outline: none; display: none; }
-        .party-count { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
-        .btn-del-party { background: none; border: none; color: #475569; cursor: pointer; font-size: 0.85rem; padding: 0 2px; }
+        .party-name-input { flex: 1; background: #1a0000; border: 1px solid #dc2626; color: white; border-radius: 5px; padding: 3px 7px; font-size: 0.9rem; outline: none; display: none; }
+        .party-count { font-size: 0.75rem; color: #9ca3af; white-space: nowrap; }
+        .btn-del-party { background: none; border: none; color: #7f1d1d; cursor: pointer; font-size: 0.85rem; padding: 0 2px; }
         .btn-del-party:hover { color: #ef4444; }
 
         .party-members { min-height: 60px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-        .drop-hint { color: #334155; font-size: 0.8rem; text-align: center; padding: 12px 0; border: 2px dashed #334155; border-radius: 8px; user-select: none; }
+        .drop-hint { color: #7f1d1d; font-size: 0.8rem; text-align: center; padding: 12px 0; border: 2px dashed #7f1d1d; border-radius: 8px; user-select: none; }
 
         /* Add party button */
-        .btn-add-party { background: #1e293b; border: 2px dashed #334155; color: #64748b; border-radius: 12px; min-width: 110px; padding: 20px 16px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; align-self: center; }
-        .btn-add-party:hover { border-color: #7c3aed; color: #a78bfa; }
+        .btn-add-party { background: #2a0a0a; border: 2px dashed #7f1d1d; color: #9ca3af; border-radius: 12px; min-width: 110px; padding: 20px 16px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; align-self: center; }
+        .btn-add-party:hover { border-color: #dc2626; color: #fca5a5; }
 
         /* Member chip */
         .chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: grab; transition: opacity 0.15s, transform 0.15s; border: 1px solid transparent; user-select: none; }
@@ -56,7 +57,7 @@
         .chip-info { flex: 1; min-width: 0; }
         .chip-name { font-size: 0.9rem; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chip-job  { font-size: 0.72rem; opacity: 0.7; }
-        .chip-del  { background: none; border: none; color: #475569; cursor: pointer; font-size: 0.8rem; padding: 0 2px; flex-shrink: 0; }
+        .chip-del  { background: none; border: none; color: #7f1d1d; cursor: pointer; font-size: 0.8rem; padding: 0 2px; flex-shrink: 0; }
         .chip-del:hover { color: #ef4444; }
 
         /* Job colors */
@@ -65,17 +66,18 @@
         .job-green   { background: #052e16; border-color: #16a34a !important; }
         .job-pink    { background: #4a044e; border-color: #d946ef !important; }
         .job-brown   { background: #1c0a00; border-color: #92400e !important; }
-        .job-default { background: #1e293b; border-color: #475569 !important; }
+        .job-blue    { background: #0c1a3b; border-color: #3b82f6 !important; }
+        .job-red     { background: #3b0000; border-color: #ef4444 !important; }
+        .job-default { background: #2a0a0a; border-color: #7f1d1d !important; }
 
         /* Pool */
-        .pool-card { background: var(--card); border-radius: 12px; border: 1px solid #334155; overflow: hidden; }
-        .pool-header { padding: 12px 16px; background: #1e3a5f; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-        .pool-header span { font-weight: bold; color: #7dd3fc; font-size: 0.95rem; }
+        .pool-card { background: #2a0a0a; border-radius: 12px; border: 1px solid #7f1d1d; overflow: hidden; }
+        .pool-header { padding: 12px 16px; background: #3b0000; border-bottom: 1px solid #7f1d1d; display: flex; justify-content: space-between; align-items: center; }
+        .pool-header span { font-weight: bold; color: #fca5a5; font-size: 0.95rem; }
         .pool-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; min-height: 80px; }
-        .pool-grid.drag-over { background: #1e1b4b; }
-        .pool-empty { color: #334155; font-size: 0.85rem; padding: 8px; }
+        .pool-grid.drag-over { background: #3b0f0f; }
+        .pool-empty { color: #7f1d1d; font-size: 0.85rem; padding: 8px; }
 
-        /* Drag ghost fix */
         [draggable="true"] { -webkit-user-drag: element; }
     </style>
 </head>
@@ -91,18 +93,20 @@
     <div class="add-card">
         <h2>➕ เพิ่มสมาชิกลงคลัง</h2>
         <div class="add-row">
-            <input type="text" id="memberName" placeholder="ชื่อตัวละคร..." onkeypress="if(event.key==='Enter') addMember()">
+            <input type="text" id="memberName" placeholder="ชื่อตัวละคร...">
             <select id="memberJob">
                 <option value="">-- เลือกอาชีพ --</option>
-                <optgroup label="🗡️ Thief">
+                <optgroup label="🛡️ Tank / Melee">
+                    <option value="Lord Knight">Lord Knight</option>
+                    <option value="Paladin">Paladin</option>
+                    <option value="Monk">Monk</option>
                     <option value="Assassin">Assassin</option>
                     <option value="Stalker">Stalker</option>
                 </optgroup>
                 <optgroup label="🎵 Support">
+                    <option value="Priest">Priest</option>
                     <option value="Bard">Bard</option>
                     <option value="Dancer">Dancer</option>
-                    <option value="Priest">Priest</option>
-                    <option value="Monk">Monk</option>
                 </optgroup>
                 <optgroup label="🏹 Ranged">
                     <option value="Sniper">Sniper</option>
@@ -120,7 +124,7 @@
                     <option value="Other">Other</option>
                 </optgroup>
             </select>
-            <button class="btn-add-member" onclick="addMember()">เพิ่ม</button>
+            <button class="btn-add-member" id="btnAddMember">เพิ่ม</button>
         </div>
     </div>
 
@@ -132,7 +136,7 @@
     <div class="pool-card">
         <div class="pool-header">
             <span>🎒 คลังสมาชิก</span>
-            <span id="poolCount" style="font-size:0.8rem;color:#94a3b8;"></span>
+            <span id="poolCount" style="font-size:0.8rem;color:#fca5a5;"></span>
         </div>
         <div class="pool-grid" id="poolGrid"
             ondragover="onDragOver(event,'pool')"
@@ -153,7 +157,11 @@ const firebaseConfig = {
     messagingSenderId: "506020314747",
     appId: "1:506020314747:web:d2afa06df8fd6179f32cde"
 };
-firebase.initializeApp(firebaseConfig);
+
+// ── Init Firebase only once ──────────────────────────────────
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const partyRef = firebase.database().ref('guild_party2');
 
 let state = {
@@ -165,9 +173,9 @@ let state = {
     pool: []
 };
 
-let dragInfo = null; // { memberId, source }
+let dragInfo = null;
 
-// ─── Firebase sync ───────────────────────────────────────────
+// ── Firebase sync ────────────────────────────────────────────
 partyRef.on('value', snap => {
     const d = snap.val();
     if (d) {
@@ -181,24 +189,29 @@ function save() {
     partyRef.set({ parties: state.parties, pool: state.pool });
 }
 
-// ─── Job helpers ─────────────────────────────────────────────
+// ── Job helpers ──────────────────────────────────────────────
 const JOB_ICON = {
-    assassin:'🗡️', stalker:'🥷', bard:'🎵', dancer:'💃',
-    priest:'✝️', monk:'🥋', sniper:'🏹', wizard:'🔮',
-    sage:'📖', biochemist:'🧪', mastersmith:'⚒️', summoner:'🌸', other:'⚔️'
+    'lord knight':'🛡️', 'paladin':'🛡️',
+    'assassin':'🗡️', 'stalker':'🥷',
+    'bard':'🎵', 'dancer':'💃', 'priest':'✝️',
+    'monk':'🥋', 'sniper':'🏹', 'wizard':'🔮',
+    'sage':'📖', 'biochemist':'🧪', 'mastersmith':'⚒️',
+    'summoner':'🌸', 'other':'⚔️'
 };
 const JOB_CLASS = {
-    assassin:'job-purple', stalker:'job-purple',
-    bard:'job-yellow', dancer:'job-yellow', sniper:'job-yellow',
-    priest:'job-green', monk:'job-green',
-    summoner:'job-pink',
-    biochemist:'job-brown', mastersmith:'job-brown',
-    wizard:'job-brown', sage:'job-brown'
+    'lord knight':'job-red', 'paladin':'job-red',
+    'assassin':'job-purple', 'stalker':'job-purple',
+    'bard':'job-yellow', 'dancer':'job-yellow', 'sniper':'job-yellow',
+    'priest':'job-green',
+    'monk':'job-blue',
+    'summoner':'job-pink',
+    'biochemist':'job-brown', 'mastersmith':'job-brown',
+    'wizard':'job-brown', 'sage':'job-brown'
 };
 function jobIcon(job)  { return JOB_ICON[job.toLowerCase()] || '⚔️'; }
 function jobClass(job) { return JOB_CLASS[job.toLowerCase()] || 'job-default'; }
 
-// ─── Add member ──────────────────────────────────────────────
+// ── Add member ───────────────────────────────────────────────
 function addMember() {
     const nameEl = document.getElementById('memberName');
     const jobEl  = document.getElementById('memberJob');
@@ -206,14 +219,25 @@ function addMember() {
     const job  = jobEl.value;
     if (!name) { nameEl.focus(); return; }
     if (!job)  { jobEl.focus();  return; }
-    state.pool.push({ id: 'u' + Date.now() + Math.random().toString(36).slice(2,6), name, job });
+    state.pool.push({
+        id: 'u' + Date.now() + Math.random().toString(36).slice(2, 6),
+        name, job
+    });
     nameEl.value = '';
     jobEl.value  = '';
     nameEl.focus();
     save();
 }
 
-// ─── Delete ──────────────────────────────────────────────────
+// Bind button and Enter key after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('btnAddMember').addEventListener('click', addMember);
+    document.getElementById('memberName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addMember();
+    });
+});
+
+// ── Delete ───────────────────────────────────────────────────
 function deleteMember(memberId) {
     state.pool = state.pool.filter(m => m.id !== memberId);
     state.parties.forEach(p => { p.members = p.members.filter(m => m.id !== memberId); });
@@ -234,7 +258,7 @@ function addParty() {
     save();
 }
 
-// ─── Party name edit ─────────────────────────────────────────
+// ── Party name edit ──────────────────────────────────────────
 function editPartyName(partyId) {
     const display = document.getElementById('pname-' + partyId);
     const input   = document.getElementById('pinput-' + partyId);
@@ -254,7 +278,7 @@ function savePartyName(partyId) {
     save();
 }
 
-// ─── Drag & Drop ─────────────────────────────────────────────
+// ── Drag & Drop ──────────────────────────────────────────────
 function onDragStart(event, memberId, source) {
     dragInfo = { memberId, source };
     event.dataTransfer.effectAllowed = 'move';
@@ -293,10 +317,8 @@ function onDrop(event, target) {
     const { memberId, source } = dragInfo;
     dragInfo = null;
 
-    // ถ้า drop ที่เดิม ไม่ต้องทำอะไร
     if (source === target) return;
 
-    // หา member object
     let member = null;
     if (source === 'pool') {
         const idx = state.pool.findIndex(m => m.id === memberId);
@@ -310,7 +332,6 @@ function onDrop(event, target) {
         member = srcParty.members.splice(idx, 1)[0];
     }
 
-    // วาง member ที่ปลายทาง
     if (target === 'pool') {
         state.pool.push(member);
     } else {
@@ -322,7 +343,7 @@ function onDrop(event, target) {
     save();
 }
 
-// ─── Render ──────────────────────────────────────────────────
+// ── Render ───────────────────────────────────────────────────
 function chipHTML(member, source) {
     const cls  = jobClass(member.job);
     const icon = jobIcon(member.job);
@@ -340,7 +361,6 @@ function chipHTML(member, source) {
 }
 
 function render() {
-    // Parties
     const wrap = document.getElementById('partiesWrap');
     wrap.innerHTML = '';
     state.parties.forEach(party => {
@@ -366,10 +386,8 @@ function render() {
         </div>`;
     });
 
-    // Add party button
     wrap.innerHTML += `<button class="btn-add-party" onclick="addParty()">＋ เพิ่ม Party</button>`;
 
-    // Pool
     const poolGrid  = document.getElementById('poolGrid');
     const poolEmpty = document.getElementById('poolEmpty');
     const existingChips = poolGrid.querySelectorAll('.chip');
