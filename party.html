@@ -3,105 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RO Guild - Party Builder</title>
+    <title>RO Guild - Party Builder PRO</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        :root { --bg: #0f0f0f; --card: #1a1a1a; --text: #e2e8f0; }
-        body { font-family: 'Tahoma', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        :root { --bg: #0d0d0d; --card: #1a1a1a; --border: #333; --text: #f1f5f9; }
+        * { box-sizing: border-box; font-family: 'Tahoma', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
         
-        .header { text-align: center; margin-bottom: 30px; }
-        .form-container { background: var(--card); padding: 20px; border-radius: 12px; display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; border: 1px solid #333; margin-bottom: 30px; }
+        .header { text-align: center; margin-bottom: 20px; background: #220000; padding: 15px; border-radius: 10px; border-bottom: 3px solid #dc2626; }
         
+        /* ฟอร์มเพิ่มสมาชิก */
+        .control-panel { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; align-items: center; }
         input, select { padding: 10px; border-radius: 6px; border: 1px solid #444; background: #000; color: #fff; outline: none; }
-        button { cursor: pointer; border: none; font-weight: bold; border-radius: 6px; padding: 10px 20px; }
-        .btn-add-member { background: #dc2626; color: #fff; }
-        .btn-add-party { background: #2563eb; color: #fff; margin-bottom: 20px; }
+        button { cursor: pointer; border: none; font-weight: bold; border-radius: 6px; padding: 10px 20px; transition: 0.2s; }
+        .btn-add-member { background: #dc2626; color: white; }
+        .btn-add-party { background: #2563eb; color: white; display: block; margin: 0 auto 20px auto; font-size: 1rem; }
+        .btn-add-member:hover, .btn-add-party:hover { opacity: 0.8; transform: scale(1.05); }
 
-        /* Color Schemes */
-        .job-red { background: #991b1b !important; border-color: #f87171 !important; } /* Tank */
-        .job-blue { background: #1e40af !important; border-color: #60a5fa !important; } /* Magic */
-        .job-pink { background: #9d174d !important; border-color: #f472b6 !important; } /* Other */
-        .job-purple { background: #6b21a8 !important; border-color: #a78bfa !important; } /* Assassin/Stalker */
-        .job-brown { background: #78350f !important; border-color: #fbbf24 !important; } /* Smith/Bio */
-        .job-yellow { background: #854d0e !important; border-color: #facc15 !important; color: #fff !important; } /* Bard/Dancer/Sniper */
-        .job-green { background: #065f46 !important; border-color: #34d399 !important; } /* Monk/Priest */
+        /* สีอาชีพตาม Category */
+        .job-red { background: #991b1b; border: 1px solid #f87171; } /* Tank */
+        .job-blue { background: #1e40af; border: 1px solid #60a5fa; } /* Magic */
+        .job-pink { background: #9d174d; border: 1px solid #f472b6; } /* Other (Summoner) */
+        .job-purple { background: #6b21a8; border: 1px solid #a78bfa; } /* Assassin/Stalker */
+        .job-brown { background: #713f12; border: 1px solid #fbbf24; } /* Smith/Bio */
+        .job-yellow { background: #854d0e; border: 1px solid #fde047; } /* Sniper/Bard/Dancer */
+        .job-green { background: #065f46; border: 1px solid #34d399; } /* Monk/Priest */
 
-        /* Layout */
-        .main-layout { display: flex; flex-direction: column; gap: 30px; }
-        .party-grid { display: flex; flex-wrap: wrap; gap: 20px; min-height: 200px; }
+        /* Layout หลัก */
+        .main-container { display: flex; flex-direction: column; gap: 30px; }
+        .party-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; min-height: 100px; }
         
-        .party-box { background: var(--card); border: 2px solid #333; border-radius: 12px; width: 260px; min-height: 300px; display: flex; flex-direction: column; }
-        .party-box.drag-over { border-color: #fff; background: #222; }
-        .party-header { background: #333; padding: 10px; text-align: center; border-radius: 10px 10px 0 0; font-weight: bold; position: relative; }
-        .party-header .count { position: absolute; right: 10px; font-size: 0.8rem; opacity: 0.7; }
-        .btn-del-party { background: none; color: #ef4444; float: left; padding: 0; }
+        /* กล่องปาร์ตี้ */
+        .party-box { background: var(--card); border: 2px solid var(--border); border-radius: 12px; min-height: 320px; display: flex; flex-direction: column; overflow: hidden; transition: 0.3s; }
+        .party-box.drag-over { border-color: #fff; background: #262626; transform: translateY(-5px); }
+        .party-header { background: #333; padding: 12px; text-align: center; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #444; }
+        .party-members { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+        .btn-del-party { background: none; color: #ef4444; padding: 0; font-size: 1.2rem; }
 
-        /* Chips */
-        .member-container { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
-        .chip { padding: 10px; border-radius: 8px; cursor: grab; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; border: 1px solid transparent; }
+        /* การ์ดสมาชิก (Chips) */
+        .chip { padding: 10px; border-radius: 8px; cursor: grab; position: relative; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
         .chip:active { cursor: grabbing; }
-        .chip .name { font-weight: bold; }
-        .chip .job-name { font-size: 0.75rem; opacity: 0.9; }
-        .btn-del-member { background: none; border: none; color: #fff; opacity: 0.5; cursor: pointer; }
+        .chip .info { line-height: 1.2; }
+        .chip .name { font-weight: bold; display: block; font-size: 0.95rem; }
+        .chip .job { font-size: 0.75rem; opacity: 0.9; }
+        .btn-remove { background: none; border: none; color: #fff; opacity: 0.6; cursor: pointer; padding: 0 5px; font-size: 1rem; }
 
-        /* Pool Section */
-        .pool-section { background: #111; padding: 20px; border-radius: 12px; border: 1px dashed #444; }
-        .pool-grid { display: flex; flex-wrap: wrap; gap: 10px; min-height: 100px; }
+        /* คลังสมาชิก (Pool) - รองรับ 100 รายชื่อ */
+        .pool-section { background: #111; padding: 20px; border-radius: 15px; border: 2px dashed #444; }
+        .pool-header { color: #888; font-size: 0.9rem; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 10px; }
+        
+        /* Scrollbar สวยๆ สำหรับคลัง */
+        .pool-grid::-webkit-scrollbar { width: 8px; }
+        .pool-grid::-webkit-scrollbar-track { background: #000; border-radius: 10px; }
+        .pool-grid::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>⚔️ Guild Party Management</h1>
-    <div id="syncStatus" style="font-size: 0.8rem; color: #10b981;">● System Connected</div>
+    <h1>⚔️ Guild Party Builder PRO</h1>
+    <div id="status" style="font-size: 0.7rem; color: #10b981;">● Database Connected</div>
 </div>
 
-<div class="form-container">
-    <input type="text" id="charName" placeholder="ชื่อตัวละคร...">
-    <select id="charJob">
+<div class="control-panel">
+    <input type="text" id="inpName" placeholder="ชื่อตัวละคร..." maxlength="20">
+    <select id="inpJob">
         <option value="">-- เลือกอาชีพ --</option>
-        <optgroup label="Tank (Red)">
+        <optgroup label="Tank (แดง)">
             <option value="Lord Knight">Lord Knight</option>
             <option value="Paladin">Paladin</option>
         </optgroup>
-        <optgroup label="Magic (Blue)">
+        <optgroup label="Magic (ฟ้า)">
             <option value="Wizard">Wizard</option>
             <option value="Sage">Sage</option>
         </optgroup>
-        <optgroup label="Other (Pink)">
+        <optgroup label="Other (ชมพู)">
             <option value="Summoner">Summoner</option>
         </optgroup>
-        <optgroup label="DPS">
-            <option value="Assassin">Assassin (Purple)</option>
-            <option value="Stalker">Stalker (Purple)</option>
-            <option value="Biochemist">Biochemist (Brown)</option>
-            <option value="Mastersmith">Mastersmith (Brown)</option>
-            <option value="Sniper">Sniper (Yellow)</option>
-            <option value="Monk">Monk (Green)</option>
+        <optgroup label="DPS (ม่วง)">
+            <option value="Assassin">Assassin</option>
+            <option value="Stalker">Stalker</option>
         </optgroup>
-        <optgroup label="Support">
-            <option value="Priest">Priest (Green)</option>
-            <option value="Bard">Bard (Yellow)</option>
-            <option value="Dancer">Dancer (Yellow)</option>
+        <optgroup label="DPS (น้ำตาล)">
+            <option value="Mastersmith">Mastersmith</option>
+            <option value="Biochemist">Biochemist</option>
+        </optgroup>
+        <optgroup label="DPS/Support (เหลือง)">
+            <option value="Sniper">Sniper</option>
+            <option value="Bard">Bard</option>
+            <option value="Dancer">Dancer</option>
+        </optgroup>
+        <optgroup label="Support (เขียว)">
+            <option value="Monk">Monk</option>
+            <option value="Priest">Priest</option>
         </optgroup>
     </select>
     <button class="btn-add-member" onclick="addMember()">➕ เพิ่มสมาชิก</button>
 </div>
 
-<button class="btn-add-party" onclick="addParty()">➕ สร้างปาร์ตี้ใหม่</button>
+<button class="btn-add-party" onclick="addParty()">⚔️ สร้างปาร์ตี้ใหม่</button>
 
-<div class="main-layout">
+<div class="main-container">
     <div class="party-grid" id="partyGrid"></div>
 
     <div class="pool-section">
-        <h3 style="margin-top:0; color:#666;">🎒 คลังสมาชิก (ลากลงมาพักที่นี่ได้)</h3>
-        <div class="pool-grid" id="poolGrid" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'pool')"></div>
+        <div class="pool-header">
+            <span>🎒 คลังสมาชิก (ลากชื่อมาพักที่นี่ได้)</span>
+            <span id="poolCount">0 รายชื่อ</span>
+        </div>
+        <div class="pool-grid" id="poolArea" ondragover="allowDrop(event)" ondrop="handleDrop(event, 'pool')"></div>
     </div>
 </div>
 
 <script>
-    // --- Configuration ---
+    // --- Firebase Configuration ---
     const firebaseConfig = {
         apiKey: "AIzaSyDbWABEMg6W4W0gBu3oXQC67p5ilQbRY-o",
         authDomain: "party-20966.firebaseapp.com",
@@ -113,25 +130,25 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref('guild_party_pro');
+    const db = firebase.database().ref('guild_party_final');
 
     let state = { pool: [], parties: [] };
-    let draggedId = null;
-    let sourceLoc = null;
+    let dragId = null;
+    let dragFrom = null;
 
-    // --- Job Color Mapping ---
-    function getJobClass(job) {
+    // --- จัดกลุ่มสีตามอาชีพ ---
+    function getJobColorClass(job) {
         if (['Lord Knight', 'Paladin'].includes(job)) return 'job-red';
         if (['Wizard', 'Sage'].includes(job)) return 'job-blue';
         if (job === 'Summoner') return 'job-pink';
         if (['Assassin', 'Stalker'].includes(job)) return 'job-purple';
-        if (['Biochemist', 'Mastersmith'].includes(job)) return 'job-brown';
-        if (['Bard', 'Dancer', 'Sniper'].includes(job)) return 'job-yellow';
+        if (['Mastersmith', 'Biochemist'].includes(job)) return 'job-brown';
+        if (['Sniper', 'Bard', 'Dancer'].includes(job)) return 'job-yellow';
         if (['Monk', 'Priest'].includes(job)) return 'job-green';
         return '';
     }
 
-    // --- Database Actions ---
+    // --- ระบบจัดการข้อมูล ---
     window.onload = () => {
         db.on('value', snap => {
             const data = snap.val();
@@ -143,29 +160,32 @@
         });
     };
 
-    function save() { db.set(state); }
+    function sync() { db.set(state); }
 
     function addMember() {
-        const name = document.getElementById('charName').value.trim();
-        const job = document.getElementById('charJob').value;
-        if (!name || !job) return alert("กรุณากรอกข้อมูลให้ครบ");
+        const name = document.getElementById('inpName').value.trim();
+        const job = document.getElementById('inpJob').value;
+        if (!name || !job) return alert("กรุณาใส่ชื่อและเลือกอาชีพ");
         
         state.pool.push({ id: 'm' + Date.now(), name, job });
-        document.getElementById('charName').value = "";
-        save();
+        document.getElementById('inpName').value = "";
+        sync();
     }
 
     function addParty() {
+        if (!state.parties) state.parties = [];
         state.parties.push({ id: 'p' + Date.now(), members: [] });
-        save();
+        sync();
     }
 
     function deleteParty(pId) {
-        if (!confirm("ลบปาร์ตี้นี้หรือไม่? (สมาชิกจะถูกย้ายลงคลัง)")) return;
-        const pIdx = state.parties.findIndex(p => p.id === pId);
-        state.pool.push(...state.parties[pIdx].members);
-        state.parties.splice(pIdx, 1);
-        save();
+        if (!confirm("ลบปาร์ตี้นี้? (สมาชิกจะถูกย้ายไปที่คลัง)")) return;
+        const idx = state.parties.findIndex(p => p.id === pId);
+        if (state.parties[idx].members) {
+            state.pool.push(...state.parties[idx].members);
+        }
+        state.parties.splice(idx, 1);
+        sync();
     }
 
     function removeMember(mId, loc) {
@@ -175,46 +195,46 @@
             const pIdx = state.parties.findIndex(p => p.id === loc);
             state.parties[pIdx].members = state.parties[pIdx].members.filter(m => m.id !== mId);
         }
-        save();
+        sync();
     }
 
-    // --- Drag & Drop ---
+    // --- ระบบ Drag and Drop ---
     function allowDrop(ev) {
         ev.preventDefault();
-        const target = ev.target.closest('.party-box') || ev.target.closest('.pool-section');
-        if (target) target.classList.add('drag-over');
+        const box = ev.target.closest('.party-box') || ev.target.closest('.pool-section');
+        if (box) box.classList.add('drag-over');
     }
 
-    function dragStart(ev, mId, loc) {
-        draggedId = mId;
-        sourceLoc = loc;
+    function onDragStart(ev, mId, loc) {
+        dragId = mId;
+        dragFrom = loc;
     }
 
     function handleDrop(ev, targetLoc) {
         ev.preventDefault();
         document.querySelectorAll('.party-box, .pool-section').forEach(el => el.classList.remove('drag-over'));
         
-        if (!draggedId) return;
+        if (!dragId) return;
 
-        // ดึงข้อมูลสมาชิกออก
+        // 1. ดึงข้อมูลสมาชิกจากที่เก่า
         let member;
-        if (sourceLoc === 'pool') {
-            const idx = state.pool.findIndex(m => m.id === draggedId);
+        if (dragFrom === 'pool') {
+            const idx = state.pool.findIndex(m => m.id === dragId);
             member = state.pool.splice(idx, 1)[0];
         } else {
-            const pIdx = state.parties.findIndex(p => p.id === sourceLoc);
-            const mIdx = state.parties[pIdx].members.findIndex(m => m.id === draggedId);
+            const pIdx = state.parties.findIndex(p => p.id === dragFrom);
+            const mIdx = state.parties[pIdx].members.findIndex(m => m.id === dragId);
             member = state.parties[pIdx].members.splice(mIdx, 1)[0];
         }
 
-        // เช็คจำนวนคน (จำกัด 5 คน)
+        // 2. ตรวจสอบเงื่อนไข 5 คน (ถ้าไม่ใช่ลากลงคลัง)
         if (targetLoc !== 'pool') {
             const tIdx = state.parties.findIndex(p => p.id === targetLoc);
             if (state.parties[tIdx].members.length >= 5) {
-                alert("ปาร์ตี้เต็มแล้ว (สูงสุด 5 คน)");
+                alert("ปาร์ตี้นี้เต็มแล้ว (สูงสุด 5 คน)");
                 // คืนที่เดิม
-                if (sourceLoc === 'pool') state.pool.push(member);
-                else state.parties[state.parties.findIndex(p => p.id === sourceLoc)].members.push(member);
+                if (dragFrom === 'pool') state.pool.push(member);
+                else state.parties[state.parties.findIndex(p => p.id === dragFrom)].members.push(member);
             } else {
                 state.parties[tIdx].members.push(member);
             }
@@ -222,41 +242,42 @@
             state.pool.push(member);
         }
 
-        draggedId = null;
-        save();
+        dragId = null;
+        sync();
     }
 
-    // --- Render ---
+    // --- ระบบวาดหน้าจอ (Render) ---
     function render() {
+        // วาดปาร์ตี้
         const pGrid = document.getElementById('partyGrid');
-        pGrid.innerHTML = state.parties.map((p, index) => `
-            <div class="party-box" 
-                 ondragover="allowDrop(event)" 
-                 ondragleave="this.classList.remove('drag-over')"
-                 ondrop="handleDrop(event, '${p.id}')">
+        pGrid.innerHTML = state.parties.map((p, i) => `
+            <div class="party-box" ondragover="allowDrop(event)" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event, '${p.id}')">
                 <div class="party-header">
                     <button class="btn-del-party" onclick="deleteParty('${p.id}')">✕</button>
-                    PARTY ${index + 1}
-                    <span class="count">${p.members.length}/5</span>
+                    <span>PARTY ${i + 1}</span>
+                    <span style="font-size:0.8rem; opacity:0.6;">${p.members ? p.members.length : 0}/5</span>
                 </div>
-                <div class="member-container">
-                    ${p.members.map(m => `
-                        <div class="chip ${getJobClass(m.job)}" draggable="true" ondragstart="dragStart(event, '${m.id}', '${p.id}')">
-                            <div><span class="name">${m.name}</span><br><span class="job-name">${m.job}</span></div>
-                            <button class="btn-del-member" onclick="removeMember('${m.id}', '${p.id}')">✕</button>
+                <div class="party-members">
+                    ${(p.members || []).map(m => `
+                        <div class="chip ${getJobColorClass(m.job)}" draggable="true" ondragstart="onDragStart(event, '${m.id}', '${p.id}')">
+                            <div class="info"><span class="name">${m.name}</span><span class="job">${m.job}</span></div>
+                            <button class="btn-remove" onclick="removeMember('${m.id}', '${p.id}')">✕</button>
                         </div>
                     `).join('')}
                 </div>
             </div>
         `).join('');
 
-        const poolGrid = document.getElementById('poolGrid');
-        poolGrid.innerHTML = state.pool.map(m => `
-            <div class="chip ${getJobClass(m.job)}" style="width:160px;" draggable="true" ondragstart="dragStart(event, '${m.id}', 'pool')">
-                <div><span class="name">${m.name}</span><br><span class="job-name">${m.job}</span></div>
-                <button class="btn-del-member" onclick="removeMember('${m.id}', 'pool')">✕</button>
+        // วาดคลัง (Pool)
+        const poolArea = document.getElementById('poolArea');
+        poolArea.innerHTML = state.pool.map(m => `
+            <div class="chip ${getJobColorClass(m.job)}" draggable="true" ondragstart="onDragStart(event, '${m.id}', 'pool')">
+                <div class="info"><span class="name">${m.name}</span><span class="job">${m.job}</span></div>
+                <button class="btn-remove" onclick="removeMember('${m.id}', 'pool')">✕</button>
             </div>
         `).join('');
+
+        document.getElementById('poolCount').innerText = state.pool.length + " รายชื่อ";
     }
 </script>
 
