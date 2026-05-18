@@ -31,7 +31,8 @@
         input { background: #121212; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 5px; }
         button { background: linear-gradient(to bottom, #8b6b32, #5c4a33); border: 1px solid var(--gold); color: white; padding: 10px 15px; cursor: pointer; font-weight: bold; border-radius: 4px; }
         .btn-red { background: linear-gradient(to bottom, #8b3232, #5c3333); border-color: #f88; }
-        .btn-move { background: #444; border-color: #666; padding: 5px 8px; font-size: 12px; }
+        .btn-move { background: #444; border-color: #666; padding: 5px 10px; font-size: 14px; line-height:1; }
+        .btn-edit { background: linear-gradient(to bottom,#2a4a6a,#1a3a5a); border-color:#5b8dd9; font-size:10px; padding:4px 8px; }
         .btn-unlock { background: #5c4a33; border: 1px solid var(--gold); margin-bottom: 10px; }
 
         .box { background: #231f1a; border: 2px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 20px; position: relative; }
@@ -181,8 +182,9 @@
 
                 const adminControls = isAdmin ? `
                     <div class="controls">
-                        <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)" title="ขึ้น">↑</button>
-                        <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)"  title="ลง">↓</button>
+                        <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)" title="เลื่อนขึ้น" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>▲</button>
+                        <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)"  title="เลื่อนลง"  ${i === queue.length - 1 ? 'disabled style="opacity:0.3"' : ''}>▼</button>
+                        <button class="btn-edit" onclick="editAuction('${type}', ${i}, '${name.replace(/'/g,"\\'")}')">✏️ แก้ไข</button>
                         ${active ? `<button onclick="doneAuction('${type}', ${i})" style="font-size:10px; background:linear-gradient(to bottom,#2d6a2d,#1a4a1a); border-color:#5c5;">✓ รับแล้ว</button>` : ''}
                         <button onclick="delAuction('${type}', ${i})" class="btn-red" style="font-size:10px; padding:4px 8px;">✕</button>
                     </div>` : '';
@@ -248,7 +250,19 @@
             });
         }
 
-        function updateAucSettings() {
+        function editAuction(type, i, currentName) {
+            if (!isAdmin) return;
+            const newName = prompt("แก้ไขชื่อตัวละคร:", currentName);
+            if (!newName || newName.trim() === currentName) return;
+            const path = `auction_v2/${type === 'card' ? 'cardQ' : 'fragQ'}`;
+            db.ref(path).once('value', snap => {
+                const q = snap.val() || [];
+                q[i] = newName.trim();
+                db.ref(path).set(q);
+            });
+        }
+
+
             if (!isAdmin) return;
             db.ref('auction_v2').update({
                 cardL: parseInt(document.getElementById('card-limit').value) || 0,
