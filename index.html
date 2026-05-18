@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WTF - Guild System</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2d2822;
+            --gold: #d4af37;
+            --border: #5c4a33;
+            --highlight: #22c55e;
+            --fragment: #3b82f6;
+            --blue-ui: #2e4a7a;
+            --lock-bg: #3b1f1f;
+        }
+
+        body { background-color: var(--bg-color); color: #f0e6d2; font-family: 'Tahoma', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        
+        .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; width: 100%; max-width: 1200px; }
+        .tab-btn { flex: 1; padding: 15px; background: #3d352b; border: 2px solid var(--border); color: #aaa; cursor: pointer; font-weight: bold; border-radius: 8px 8px 0 0; }
+        .tab-btn.active { background: var(--panel-bg); color: var(--gold); border-bottom: 2px solid var(--gold); }
+
+        #main-content { width: 100%; max-width: 1200px; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        input { background: #121212; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 5px; }
+        button { background: linear-gradient(to bottom, #8b6b32, #5c4a33); border: 1px solid var(--gold); color: white; padding: 10px 15px; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        .btn-red { background: linear-gradient(to bottom, #8b3232, #5c3333); border-color: #f88; }
+        .btn-move { background: #444; border-color: #666; padding: 5px 8px; font-size: 12px; }
+        .btn-unlock { background: #5c4a33; border: 1px solid var(--gold); margin-bottom: 10px; }
+
+        .box { background: #231f1a; border: 2px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 20px; position: relative; }
+
+        /* Auction UI */
+        .queue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .queue-grid { grid-template-columns: 1fr; } }
+        .queue-item { background: #3d352b; margin-bottom: 8px; padding: 12px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .card-active { border: 2px solid var(--highlight); background: #1b2e1b; }
+        .frag-active { border: 2px solid var(--fragment); background: #1a2433; }
+        .controls { display: flex; gap: 5px; align-items: center; }
+
+        /* Party UI */
+        .party-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .party-window { background: #252a35; border: 2px solid #506070; border-radius: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .party-title { background: linear-gradient(to bottom, #4a6a9a, #2e4a7a); padding: 8px 12px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
+        .party-body { padding: 10px; display: flex; flex-direction: column; gap: 5px; min-height: 150px; }
+        .member-slot { background: rgba(0,0,0,0.3); border: 1px solid #3d4a5a; padding: 6px 10px; border-radius: 3px; display: flex; justify-content: space-between; font-size: 14px; }
+        .add-btn { background: rgba(255,255,255,0.1); border: 2px dashed #506070; color: #506070; padding: 8px; text-align: center; cursor: pointer; font-size: 18px; margin-top: 10px; }
+
+        .admin-only { display: none; } /* ซ่อนไว้รอ Admin ปลดล็อค */
+    </style>
+</head>
+<body>
+
+    <div id="main-content">
+        <div style="text-align: right; margin-bottom: 10px;">
+            <button id="unlock-btn" class="btn-unlock" onclick="toggleAdmin()">🔓 ปลดล็อคจัดการคิว (Manager Only)</button>
+            <button id="lock-btn" class="btn-unlock btn-red" onclick="lockAdmin()" style="display:none;">🔒 ล็อคการแก้ไข</button>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('auction-page', this)">ประมูลของวอร์</button>
+            <button class="tab-btn" onclick="switchTab('party-page', this)">จัดการปาร์ตี้ (เปิดเสรี)</button>
+        </div>
+
+        <!-- หน้าประมูล (มีระบบ Lock) -->
+        <div id="auction-page" class="page active">
+            <div class="box admin-only" id="admin-auc-input">
+                <h4 style="margin:0; color:var(--gold)">แผงควบคุมการจัดการคิว</h4>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <input type="text" id="auc-name-input" placeholder="ชื่อตัวละคร...">
+                    <button onclick="addAuction('card')">+ คิวสมุด</button>
+                    <button onclick="addAuction('frag')" style="background:var(--blue-ui)">+ คิว Frag</button>
+                </div>
+                <div style="margin-top:10px; font-size: 14px;">
+                    ดรอป -> สมุด: <input type="number" id="card-limit" value="0" onchange="updateAucSettings()" style="width:50px"> 
+                    Frag: <input type="number" id="frag-limit" value="0" onchange="updateAucSettings()" style="width:50px">
+                </div>
+            </div>
+
+            <div class="queue-grid">
+                <div class="box">
+                    <h3 style="color:var(--highlight)">คิวสมุดการ์ด</h3>
+                    <div id="card-list"></div>
+                </div>
+                <div class="box">
+                    <h3 style="color:var(--fragment)">คิว Fragment</h3>
+                    <div id="frag-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- หน้าจัดการปาร์ตี้ (ไม่มีการล็อค) -->
+        <div id="party-page" class="page">
+            <div class="box">
+                <h3 style="margin:0; color:var(--gold)">1. เตรียมรายชื่อตัวละคร</h3>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <input type="text" id="p-waiting-input" placeholder="ชื่อตัวละคร..." style="flex-grow:1">
+                    <button onclick="addWaiting()">เพิ่มชื่อ</button>
+                </div>
+                <div id="waiting-area" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0; color:var(--gold)">2. จัดสรรปาร์ตี้</h3>
+                <button onclick="createParty()" style="background:var(--highlight)">+ สร้างปาร์ตี้ใหม่</button>
+            </div>
+            <div id="party-grid" class="party-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://rooc-update-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let isAdmin = false;
+
+        function switchTab(id, btn) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        // ระบบจัดการสิทธิ์ (Admin)
+        function toggleAdmin() {
+            const pass = prompt("กรุณาใส่รหัสเพื่อจัดการคิวประมูล:");
+            if (pass === 'wtf') {
+                isAdmin = true;
+                document.getElementById('unlock-btn').style.display = 'none';
+                document.getElementById('lock-btn').style.display = 'inline-block';
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                refreshData(); // โหลดข้อมูลใหม่เพื่อให้ปุ่มจัดการโผล่
+            } else {
+                alert("รหัสไม่ถูกต้อง!");
+            }
+        }
+
+        function lockAdmin() {
+            isAdmin = false;
+            document.getElementById('unlock-btn').style.display = 'inline-block';
+            document.getElementById('lock-btn').style.display = 'none';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+            refreshData(); // โหลดข้อมูลใหม่เพื่อซ่อนปุ่มจัดการ
+        }
+
+        function refreshData() {
+            db.ref('auction_v2').once('value', s => {
+                const d = s.val() || {};
+                renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
+                renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
+            });
+        }
+
+        // เริ่มฟังข้อมูล
+        startListening();
+
+        function startListening() {
+            db.ref('auction_v2').on('value', s => {
+                const d = s.val() || {};
+                renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
+                renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
+                document.getElementById('card-limit').value = d.cardL || 0;
+                document.getElementById('frag-limit').value = d.fragL || 0;
+            });
+
+            db.ref('party_v2').on('value', s => {
+                const d = s.val() || {};
+                renderWaiting(d.waiting || []);
+                renderParties(d.parties || {}, d.waiting || []);
+            });
+        }
+
+        // --- Auction Logic (ปรับให้รองรับสิทธิ์) ---
+        function renderAuction(id, q, limit, type) {
+            const el = document.getElementById(id); el.innerHTML = '';
+            q.forEach((name, i) => {
+                const active = i < limit;
+                const div = document.createElement('div');
+                div.className = `queue-item ${active ? (type === 'card' ? 'card-active' : 'frag-active') : ''}`;
+                
+                // ปุ่มควบคุมจะแสดงเฉพาะเมื่อ isAdmin เป็น true เท่านั้น
+                let controlButtons = '';
+                if (isAdmin) {
+                    controlButtons = `
+                        <div class="controls">
+                            <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)">↑</button>
+                            <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)">↓</button>
+                            ${active ? `<button onclick="doneAuction('${type}',${i})" style="font-size:10px">รับแล้ว</button>` : ''}
+                            <button onclick="delAuction('${type}',${i})" class="btn-red" style="font-size:10px">X</button>
+                        </div>`;
+                }
+
+                div.innerHTML = `<span>#${i+1} ${name}</span> ${controlButtons}`;
+                el.appendChild(div);
+            });
+            
+            // ปิดการแก้ไข Input ถ้าไม่ใช่ Admin
+            document.getElementById('card-limit').disabled = !isAdmin;
+            document.getElementById('frag-limit').disabled = !isAdmin;
+        }
+
+        function addAuction(type) {
+            if(!isAdmin) return;
+            const inp = document.getElementById('auc-name-input');
+            if(!inp.value) return;
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                const q = s.val() || [];
+                q.push(inp.value);
+                db.ref('auction_v2/' + path).set(q);
+                inp.value = '';
+            });
+        }
+
+        function moveStep(type, index, step) {
+            if(!isAdmin) return;
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val() || [];
+                let newIndex = index + step;
+                if (newIndex < 0 || newIndex >= q.length) return;
+                [q[index], q[newIndex]] = [q[newIndex], q[index]];
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function doneAuction(type, i) {
+            if(!isAdmin) return;
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val(); const [item] = q.splice(i, 1); q.push(item);
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function delAuction(type, i) {
+            if(!isAdmin) return;
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val(); q.splice(i, 1);
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function updateAucSettings() {
+            if(!isAdmin) return;
+            db.ref('auction_v2').update({
+                cardL: parseInt(document.getElementById('card-limit').value),
+                fragL: parseInt(document.getElementById('frag-limit').value)
+            });
+        }
+
+        // --- Party Logic (เปิดอิสระ ไม่เช็ค isAdmin) ---
+        function addWaiting() {
+            const inp = document.getElementById('p-waiting-input');
+            if(!inp.value) return;
+            db.ref('party_v2/waiting').once('value', s => {
+                const list = s.val() || [];
+                list.push(inp.value);
+                db.ref('party_v2/waiting').set(list);
+                inp.value = '';
+            });
+        }
+
+        function renderWaiting(list) {
+            const area = document.getElementById('waiting-area'); area.innerHTML = '';
+            list.forEach((name, i) => {
+                const item = document.createElement('div');
+                item.style = "background:#3d352b; padding:5px 10px; border-radius:15px; border:1px solid var(--gold); font-size:13px;";
+                item.innerHTML = `${name} <span onclick="delWaiting(${i})" style="color:red; cursor:pointer; margin-left:5px">x</span>`;
+                area.appendChild(item);
+            });
+        }
+
+        function delWaiting(i) {
+            db.ref('party_v2/waiting').once('value', s => {
+                let list = s.val(); list.splice(i, 1);
+                db.ref('party_v2/waiting').set(list);
+            });
+        }
+
+        function createParty() {
+            db.ref('party_v2/parties').once('value', s => {
+                const ps = s.val() || {};
+                const id = 'p_' + Date.now();
+                db.ref('party_v2/parties/' + id).set({ name: 'Party #' + (Object.keys(ps).length + 1), members: [] });
+            });
+        }
+
+        function renderParties(parties, waiting) {
+            const grid = document.getElementById('party-grid'); grid.innerHTML = '';
+            Object.keys(parties).forEach(id => {
+                const p = parties[id];
+                const win = document.createElement('div');
+                win.className = 'party-window';
+                const membersHTML = (p.members || []).map((m, i) => `
+                    <div class="member-slot"><span>${m}</span><span onclick="removeMember('${id}',${i})" style="color:red; cursor:pointer">X</span></div>
+                `).join('');
+
+                win.innerHTML = `
+                    <div class="party-title"><span>${p.name}</span><span onclick="delParty('${id}')" style="cursor:pointer; font-size:10px">[ลบ]</span></div>
+                    <div class="party-body">
+                        ${membersHTML}
+                        <div class="add-btn" onclick="document.getElementById('sel-${id}').style.display='block'">+</div>
+                        <select id="sel-${id}" style="display:none; margin-top:5px; background:#000; color:#fff;" onchange="assignMember('${id}', this)">
+                            <option value="">-- เลือกคน --</option>
+                            ${waiting.map((name, i) => `<option value="${i}">${name}</option>`).join('')}
+                        </select>
+                    </div>`;
+                grid.appendChild(win);
+            });
+        }
+
+        function assignMember(pId, sel) {
+            if(sel.value === "") return;
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let waiting = d.waiting;
+                let party = d.parties[pId];
+                if(!party.members) party.members = [];
+                const [name] = waiting.splice(sel.value, 1);
+                party.members.push(name);
+                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+            });
+        }
+
+        function removeMember(pId, mIdx) {
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let party = d.parties[pId];
+                let waiting = d.waiting || [];
+                const [name] = party.members.splice(mIdx, 1);
+                waiting.push(name);
+                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+            });
+        }
+
+        function delParty(id) {
+            if(!confirm('ลบตี้?')) return;
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let waiting = d.waiting || [];
+                const members = d.parties[id].members || [];
+                db.ref('party_v2/waiting').set([...waiting, ...members]);
+                db.ref('party_v2/parties/' + id).remove();
+            });
+        }
+    </script>
+</body>
+</html>
