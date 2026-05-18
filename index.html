@@ -6,7 +6,7 @@
     <title>WTF - Guild System</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
+    
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -19,7 +19,7 @@
         }
 
         body { background-color: var(--bg-color); color: #f0e6d2; font-family: 'Tahoma', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-
+        
         .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; width: 100%; max-width: 1200px; }
         .tab-btn { flex: 1; padding: 15px; background: #3d352b; border: 2px solid var(--border); color: #aaa; cursor: pointer; font-weight: bold; border-radius: 8px 8px 0 0; }
         .tab-btn.active { background: var(--panel-bg); color: var(--gold); border-bottom: 2px solid var(--gold); }
@@ -30,23 +30,21 @@
 
         input { background: #121212; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 5px; }
         button { background: linear-gradient(to bottom, #8b6b32, #5c4a33); border: 1px solid var(--gold); color: white; padding: 10px 15px; cursor: pointer; font-weight: bold; border-radius: 4px; }
-        .btn-red    { background: linear-gradient(to bottom, #8b3232, #5c3333); border-color: #f88; }
-        .btn-move   { background: #444; border-color: #666; padding: 5px 10px; font-size: 14px; line-height: 1; }
-        .btn-edit   { background: linear-gradient(to bottom, #2a4a6a, #1a3a5a); border-color: #5b8dd9; font-size: 10px; padding: 4px 8px; }
+        .btn-red { background: linear-gradient(to bottom, #8b3232, #5c3333); border-color: #f88; }
+        .btn-move { background: #444; border-color: #666; padding: 5px 8px; font-size: 12px; }
         .btn-unlock { background: #5c4a33; border: 1px solid var(--gold); margin-bottom: 10px; }
 
-        .box { background: #231f1a; border: 2px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .box { background: #231f1a; border: 2px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 20px; position: relative; }
 
-        /* Auction */
-        #admin-auc-input { display: none; }
+        /* Auction UI */
         .queue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 768px) { .queue-grid { grid-template-columns: 1fr; } }
-        .queue-item { background: #3d352b; margin-bottom: 8px; padding: 12px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .queue-item { background: #3d352b; margin-bottom: 8px; padding: 12px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
         .card-active { border: 2px solid var(--highlight); background: #1b2e1b; }
         .frag-active { border: 2px solid var(--fragment); background: #1a2433; }
-        .controls { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+        .controls { display: flex; gap: 5px; align-items: center; }
 
-        /* Party */
+        /* Party UI */
         .party-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .party-window { background: #252a35; border: 2px solid #506070; border-radius: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .party-title { background: linear-gradient(to bottom, #4a6a9a, #2e4a7a); padding: 8px 12px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
@@ -55,386 +53,327 @@
         .party-body { padding: 10px; display: flex; flex-direction: column; gap: 5px; min-height: 150px; }
         .member-slot { background: rgba(0,0,0,0.3); border: 1px solid #3d4a5a; padding: 6px 10px; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         .add-btn { background: rgba(255,255,255,0.1); border: 2px dashed #506070; color: #506070; padding: 8px; text-align: center; cursor: pointer; font-size: 18px; margin-top: 10px; }
+
+        .admin-only { display: none; }
     </style>
 </head>
 <body>
-<div id="main-content">
 
-    <div style="text-align:right; margin-bottom:10px;">
-        <button id="unlock-btn" class="btn-unlock" onclick="toggleAdmin()">🔓 ปลดล็อคจัดการคิว (Manager Only)</button>
-        <button id="lock-btn"   class="btn-unlock btn-red" onclick="lockAdmin()" style="display:none;">🔒 ล็อคการแก้ไข</button>
-    </div>
+    <div id="main-content">
+        <div style="text-align: right; margin-bottom: 10px;">
+            <button id="unlock-btn" class="btn-unlock" onclick="toggleAdmin()">🔓 ปลดล็อคจัดการคิว (Manager Only)</button>
+            <button id="lock-btn" class="btn-unlock btn-red" onclick="lockAdmin()" style="display:none;">🔒 ล็อคการแก้ไข</button>
+        </div>
 
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('auction-page', this)">ประมูลของวอร์</button>
-        <button class="tab-btn"        onclick="switchTab('party-page', this)">จัดการปาร์ตี้</button>
-    </div>
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('auction-page', this)">ประมูลของวอร์</button>
+            <button class="tab-btn" onclick="switchTab('party-page', this)">จัดการปาร์ตี้</button>
+        </div>
 
-    <!-- ===== หน้าประมูล ===== -->
-    <div id="auction-page" class="page active">
-        <div class="box" id="admin-auc-input">
-            <h4 style="margin:0; color:var(--gold)">จัดการคิวประมูล</h4>
-            <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
-                <input type="text" id="auc-name-input" placeholder="ชื่อตัวละคร..." style="flex:1; min-width:140px;"
-                    onkeydown="if(event.key==='Enter') addAuction(lastAucType||'card')">
-                <button onclick="addAuction('card')">+ คิวสมุด</button>
-                <button onclick="addAuction('frag')" style="background:var(--blue-ui); border-color:#5b8dd9;">+ คิว Frag</button>
+        <!-- หน้าประมูล -->
+        <div id="auction-page" class="page active">
+            <div class="box admin-only" id="admin-auc-input">
+                <h4 style="margin:0; color:var(--gold)">จัดการคิวประมูล</h4>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <input type="text" id="auc-name-input" placeholder="ชื่อตัวละคร...">
+                    <button onclick="addAuction('card')">+ คิวสมุด</button>
+                    <button onclick="addAuction('frag')" style="background:var(--blue-ui)">+ คิว Frag</button>
+                </div>
+                <div style="margin-top:10px; font-size: 14px;">
+                    ดรอป -> สมุด: <input type="number" id="card-limit" value="0" onchange="updateAucSettings()" style="width:50px"> 
+                    Frag: <input type="number" id="frag-limit" value="0" onchange="updateAucSettings()" style="width:50px">
+                </div>
             </div>
-            <div style="margin-top:10px; font-size:14px; display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
-                <span>ดรอป → สมุด: <input type="number" id="card-limit" value="0" onchange="updateAucSettings()" style="width:55px; padding:5px;"></span>
-                <span>Frag: <input type="number" id="frag-limit" value="0" onchange="updateAucSettings()" style="width:55px; padding:5px;"></span>
+            <div class="queue-grid">
+                <div class="box"><h3 style="color:var(--highlight)">คิวสมุดการ์ด</h3><div id="card-list"></div></div>
+                <div class="box"><h3 style="color:var(--fragment)">คิว Fragment</h3><div id="frag-list"></div></div>
             </div>
         </div>
-        <div class="queue-grid">
-            <div class="box"><h3 style="color:var(--highlight); margin-top:0;">คิวสมุดการ์ด</h3><div id="card-list"></div></div>
-            <div class="box"><h3 style="color:var(--fragment);  margin-top:0;">คิว Fragment</h3> <div id="frag-list"></div></div>
+
+        <!-- หน้าจัดการปาร์ตี้ -->
+        <div id="party-page" class="page">
+            <div class="box">
+                <h3 style="margin:0; color:var(--gold)">1. เตรียมรายชื่อตัวละคร</h3>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <input type="text" id="p-waiting-input" placeholder="ชื่อตัวละคร..." style="flex-grow:1">
+                    <button onclick="addWaiting()">เพิ่มชื่อ</button>
+                </div>
+                <div id="waiting-area" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0; color:var(--gold)">2. รายการปาร์ตี้ (คลิกชื่อเพื่อแก้ไข/เรียง)</h3>
+                <button onclick="createParty()" style="background:var(--highlight)">+ สร้างปาร์ตี้ใหม่</button>
+            </div>
+            <div id="party-grid" class="party-grid"></div>
         </div>
     </div>
 
-    <!-- ===== หน้าปาร์ตี้ ===== -->
-    <div id="party-page" class="page">
-        <div class="box">
-            <h3 style="margin:0; color:var(--gold)">1. เตรียมรายชื่อตัวละคร</h3>
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <input type="text" id="p-waiting-input" placeholder="ชื่อตัวละคร..." style="flex-grow:1">
-                <button onclick="addWaiting()">เพิ่มชื่อ</button>
-            </div>
-            <div id="waiting-area" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;"></div>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-            <h3 style="margin:0; color:var(--gold)">2. รายการปาร์ตี้ (คลิกชื่อเพื่อแก้ไข/เรียง)</h3>
-            <button onclick="createParty()" style="background:var(--highlight)">+ สร้างปาร์ตี้ใหม่</button>
-        </div>
-        <div id="party-grid" class="party-grid"></div>
-    </div>
+    <script>
+        const firebaseConfig = { databaseURL: "https://rooc-update-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-</div>
-<script>
-    const firebaseConfig = { databaseURL: "https://rooc-update-default-rtdb.asia-southeast1.firebasedatabase.app/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+        let isAdmin = false;
 
-    let isAdmin = false;
-    let lastAucType = 'card';
-
-    // ===== TAB =====
-    function switchTab(id, btn) {
-        document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-        document.getElementById(id).classList.add('active');
-        btn.classList.add('active');
-    }
-
-    // ===== ADMIN =====
-    function toggleAdmin() {
-        var pw = prompt("รหัสผ่าน:");
-        if (pw === null) return;
-        if (pw === 'wtf') {
-            isAdmin = true;
-            document.getElementById('unlock-btn').style.display = 'none';
-            document.getElementById('lock-btn').style.display = 'inline-block';
-            document.getElementById('admin-auc-input').style.display = 'block';
-        } else {
-            alert("รหัสผิด!");
-        }
-    }
-
-    function lockAdmin() {
-        isAdmin = false;
-        document.getElementById('unlock-btn').style.display = 'inline-block';
-        document.getElementById('lock-btn').style.display = 'none';
-        document.getElementById('admin-auc-input').style.display = 'none';
-    }
-
-    // ===== AUCTION =====
-    db.ref('auction_v2').on('value', function(snap) {
-        var d = snap.val() || {};
-        var cardQ = d.cardQ || [];
-        var fragQ = d.fragQ || [];
-        var cardL = d.cardL || 0;
-        var fragL = d.fragL || 0;
-
-        renderAuction('card-list', cardQ, cardL, 'card');
-        renderAuction('frag-list', fragQ, fragL, 'frag');
-
-        var cardLimitEl = document.getElementById('card-limit');
-        var fragLimitEl = document.getElementById('frag-limit');
-        if (document.activeElement !== cardLimitEl) cardLimitEl.value = cardL;
-        if (document.activeElement !== fragLimitEl) fragLimitEl.value = fragL;
-    });
-
-    function renderAuction(containerId, queue, limit, type) {
-        var el = document.getElementById(containerId);
-        el.innerHTML = '';
-
-        if (queue.length === 0) {
-            el.innerHTML = '<div style="color:#666; font-size:13px; padding:10px;">ยังไม่มีคิว</div>';
-            return;
+        function switchTab(id, btn) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
         }
 
-        for (var i = 0; i < queue.length; i++) {
-            var name = queue[i];
-            var active = i < limit;
+        function toggleAdmin() {
+            if (prompt("รหัสผ่าน:") === 'wtf') {
+                isAdmin = true;
+                document.getElementById('unlock-btn').style.display = 'none';
+                document.getElementById('lock-btn').style.display = 'inline-block';
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                refreshData();
+            } else { alert("รหัสผิด!"); }
+        }
 
-            var div = document.createElement('div');
-            var cls = 'queue-item';
-            if (active) cls += type === 'card' ? ' card-active' : ' frag-active';
-            div.className = cls;
+        function lockAdmin() {
+            isAdmin = false;
+            document.getElementById('unlock-btn').style.display = 'inline-block';
+            document.getElementById('lock-btn').style.display = 'none';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+            refreshData();
+        }
 
-            var activeLabel = active
-                ? '<span style="font-size:11px;margin-left:6px;color:' + (type === 'card' ? 'var(--highlight)' : 'var(--fragment)') + ';">● แอคทีฟ</span>'
-                : '';
+        function refreshData() {
+            db.ref('auction_v2').once('value', s => {
+                const d = s.val() || {};
+                renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
+                renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
+            });
+        }
 
-            var controls = '';
-            if (isAdmin) {
-                var upAttr = i === 0 ? 'disabled' : '';
-                var dnAttr = i === queue.length - 1 ? 'disabled' : '';
-                var doneBtn = active
-                    ? '<button onclick="doneAuction(\'' + type + '\',' + i + ')" style="font-size:10px;background:linear-gradient(to bottom,#2d6a2d,#1a4a1a);border-color:#5c5;">✓ รับแล้ว</button>'
-                    : '';
-                var safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                controls = '<div class="controls">'
-                    + '<button class="btn-move" onclick="moveStep(\'' + type + '\',' + i + ',-1)" ' + upAttr + '>▲</button>'
-                    + '<button class="btn-move" onclick="moveStep(\'' + type + '\',' + i + ',1)" '  + dnAttr + '>▼</button>'
-                    + '<button class="btn-edit" onclick="editAuction(\'' + type + '\',' + i + ',\'' + safeName + '\')">✏️ แก้ไข</button>'
-                    + doneBtn
-                    + '<button class="btn-red" onclick="delAuction(\'' + type + '\',' + i + ')" style="font-size:10px;padding:4px 8px;">✕</button>'
-                    + '</div>';
+        function startListening() {
+            db.ref('auction_v2').on('value', s => {
+                const d = s.val() || {};
+                renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
+                renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
+                document.getElementById('card-limit').value = d.cardL || 0;
+                document.getElementById('frag-limit').value = d.fragL || 0;
+            });
+
+            db.ref('party_v2').on('value', s => {
+                const d = s.val() || {};
+                renderWaiting(d.waiting || []);
+                renderParties(d.parties || {}, d.waiting || []);
+            });
+        }
+        startListening();
+
+        // --- Auction Functions ---
+        function renderAuction(id, q, limit, type) {
+            const el = document.getElementById(id); el.innerHTML = '';
+            q.forEach((name, i) => {
+                const active = i < limit;
+                const div = document.createElement('div');
+                div.className = `queue-item ${active ? (type === 'card' ? 'card-active' : 'frag-active') : ''}`;
+                let controls = isAdmin ? `<div class="controls">
+                    <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)">↑</button>
+                    <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)">↓</button>
+                    <button class="btn-move" onclick="editAuction('${type}', ${i})" style="background:#2a4a6a; border-color:#5b8dd9;">✏️</button>
+                    ${active ? `<button onclick="doneAuction('${type}',${i})" style="font-size:10px">รับแล้ว</button>` : ''}
+                    <button onclick="delAuction('${type}',${i})" class="btn-red" style="font-size:10px">X</button>
+                </div>` : '';
+                div.innerHTML = `<span>#${i+1} ${name}</span> ${controls}`;
+                el.appendChild(div);
+            });
+            document.getElementById('card-limit').disabled = !isAdmin;
+            document.getElementById('frag-limit').disabled = !isAdmin;
+        }
+
+        function addAuction(type) {
+            const inp = document.getElementById('auc-name-input');
+            if(!inp.value || !isAdmin) return;
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                const q = s.val() || []; q.push(inp.value);
+                db.ref('auction_v2/' + path).set(q); inp.value = '';
+            });
+        }
+
+        function editAuction(type, i) {
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                const q = s.val() || [];
+                const newName = prompt("แก้ไขชื่อตัวละคร:", q[i]);
+                if (!newName || newName.trim() === q[i]) return;
+                q[i] = newName.trim();
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function moveStep(type, index, step) {
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val() || [];
+                let newIndex = index + step;
+                if (newIndex >= 0 && newIndex < q.length) {
+                    [q[index], q[newIndex]] = [q[newIndex], q[index]];
+                    db.ref('auction_v2/' + path).set(q);
+                }
+            });
+        }
+
+        function doneAuction(type, i) {
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val(); const [item] = q.splice(i, 1); q.push(item);
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function delAuction(type, i) {
+            const path = type === 'card' ? 'cardQ' : 'fragQ';
+            db.ref('auction_v2/' + path).once('value', s => {
+                let q = s.val(); q.splice(i, 1);
+                db.ref('auction_v2/' + path).set(q);
+            });
+        }
+
+        function updateAucSettings() {
+            db.ref('auction_v2').update({
+                cardL: parseInt(document.getElementById('card-limit').value),
+                fragL: parseInt(document.getElementById('frag-limit').value)
+            });
+        }
+
+        // --- Party Functions ---
+        function addWaiting() {
+            const inp = document.getElementById('p-waiting-input');
+            if(!inp.value) return;
+            db.ref('party_v2/waiting').once('value', s => {
+                const list = s.val() || []; list.push(inp.value);
+                db.ref('party_v2/waiting').set(list); inp.value = '';
+            });
+        }
+
+        function renderWaiting(list) {
+            const area = document.getElementById('waiting-area'); area.innerHTML = '';
+            list.forEach((name, i) => {
+                const item = document.createElement('div');
+                item.style = "background:#3d352b; padding:5px 10px; border-radius:15px; border:1px solid var(--gold); font-size:13px; display:flex; align-items:center; gap:6px;";
+                item.innerHTML = `<span>${name}</span>
+                    <span onclick="editWaiting(${i})" style="cursor:pointer; font-size:12px;" title="แก้ไขชื่อ">✏️</span>
+                    <span onclick="delWaiting(${i})" style="color:red; cursor:pointer; margin-left:2px">x</span>`;
+                area.appendChild(item);
+            });
+        }
+
+        function editWaiting(i) {
+            db.ref('party_v2/waiting').once('value', s => {
+                const list = s.val() || [];
+                const newName = prompt("แก้ไขชื่อตัวละคร:", list[i]);
+                if (!newName || newName.trim() === list[i]) return;
+                list[i] = newName.trim();
+                db.ref('party_v2/waiting').set(list);
+            });
+        }
+
+        function delWaiting(i) {
+            db.ref('party_v2/waiting').once('value', s => {
+                let list = s.val(); list.splice(i, 1);
+                db.ref('party_v2/waiting').set(list);
+            });
+        }
+
+        function createParty() {
+            db.ref('party_v2/parties').once('value', s => {
+                const ps = s.val() || {};
+                const id = 'p_' + Date.now();
+                db.ref('party_v2/parties/' + id).set({ name: 'Party #' + (Object.keys(ps).length + 1), members: [] });
+            });
+        }
+
+        function renderParties(parties, waiting) {
+            const grid = document.getElementById('party-grid'); grid.innerHTML = '';
+            
+            const sortedParties = Object.keys(parties).map(id => ({ id, ...parties[id] }))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+
+            sortedParties.forEach(p => {
+                const win = document.createElement('div');
+                win.className = 'party-window';
+                const membersHTML = (p.members || []).map((m, i) => `
+                    <div class="member-slot">
+                        <span>${m}</span>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span onclick="editMember('${p.id}',${i})" style="cursor:pointer; font-size:12px;" title="แก้ไขชื่อ">✏️</span>
+                            <span onclick="removeMember('${p.id}',${i})" style="color:red; cursor:pointer">X</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                win.innerHTML = `
+                    <div class="party-title">
+                        <span class="party-name-txt" onclick="editPartyName('${p.id}', '${p.name}')">${p.name}</span>
+                        <span onclick="delParty('${p.id}')" style="cursor:pointer; font-size:10px">[ลบตี้]</span>
+                    </div>
+                    <div class="party-body">
+                        ${membersHTML}
+                        <div class="add-btn" onclick="document.getElementById('sel-${p.id}').style.display='block'">+</div>
+                        <select id="sel-${p.id}" style="display:none; margin-top:5px; background:#000; color:#fff;" onchange="assignMember('${p.id}', this)">
+                            <option value="">-- เลือกคน --</option>
+                            ${waiting.map((name, i) => `<option value="${i}">${name}</option>`).join('')}
+                        </select>
+                    </div>`;
+                grid.appendChild(win);
+            });
+        }
+
+        function editPartyName(id, currentName) {
+            const newName = prompt("แก้ไขชื่อปาร์ตี้ (ระบบจะเรียงตามชื่อนี้):", currentName);
+            if (newName && newName !== currentName) {
+                db.ref(`party_v2/parties/${id}/name`).set(newName);
             }
-
-            div.innerHTML = '<span style="font-size:14px;"><span style="color:#888;margin-right:6px;">#' + (i+1) + '</span><strong>' + name + '</strong>' + activeLabel + '</span>' + controls;
-            el.appendChild(div);
         }
-    }
 
-    function addAuction(type) {
-        if (!isAdmin) return;
-        lastAucType = type;
-        var inp = document.getElementById('auc-name-input');
-        var name = inp.value.trim();
-        if (!name) { inp.focus(); return; }
-        var path = 'auction_v2/' + (type === 'card' ? 'cardQ' : 'fragQ');
-        db.ref(path).once('value', function(snap) {
-            var q = snap.val() || [];
-            q.push(name);
-            db.ref(path).set(q).then(function() { inp.value = ''; inp.focus(); });
-        });
-    }
-
-    function moveStep(type, index, step) {
-        if (!isAdmin) return;
-        var path = 'auction_v2/' + (type === 'card' ? 'cardQ' : 'fragQ');
-        db.ref(path).once('value', function(snap) {
-            var q = snap.val() || [];
-            var ni = index + step;
-            if (ni >= 0 && ni < q.length) {
-                var tmp = q[index]; q[index] = q[ni]; q[ni] = tmp;
-                db.ref(path).set(q);
-            }
-        });
-    }
-
-    function editAuction(type, i, currentName) {
-        if (!isAdmin) return;
-        var newName = prompt("แก้ไขชื่อตัวละคร:", currentName);
-        if (!newName || newName.trim() === currentName) return;
-        var path = 'auction_v2/' + (type === 'card' ? 'cardQ' : 'fragQ');
-        db.ref(path).once('value', function(snap) {
-            var q = snap.val() || [];
-            q[i] = newName.trim();
-            db.ref(path).set(q);
-        });
-    }
-
-    function doneAuction(type, i) {
-        if (!isAdmin) return;
-        var path = 'auction_v2/' + (type === 'card' ? 'cardQ' : 'fragQ');
-        db.ref(path).once('value', function(snap) {
-            var q = snap.val() || [];
-            var item = q.splice(i, 1)[0];
-            q.push(item);
-            db.ref(path).set(q);
-        });
-    }
-
-    function delAuction(type, i) {
-        if (!isAdmin) return;
-        if (!confirm('ลบออกจากคิว?')) return;
-        var path = 'auction_v2/' + (type === 'card' ? 'cardQ' : 'fragQ');
-        db.ref(path).once('value', function(snap) {
-            var q = snap.val() || [];
-            q.splice(i, 1);
-            db.ref(path).set(q);
-        });
-    }
-
-    function updateAucSettings() {
-        if (!isAdmin) return;
-        db.ref('auction_v2').update({
-            cardL: parseInt(document.getElementById('card-limit').value) || 0,
-            fragL: parseInt(document.getElementById('frag-limit').value) || 0
-        });
-    }
-
-    // ===== PARTY =====
-    db.ref('party_v2').on('value', function(snap) {
-        var d = snap.val() || {};
-        renderWaiting(d.waiting || []);
-        renderParties(d.parties || {}, d.waiting || []);
-    });
-
-    function addWaiting() {
-        var inp = document.getElementById('p-waiting-input');
-        var name = inp.value.trim();
-        if (!name) return;
-        db.ref('party_v2/waiting').once('value', function(snap) {
-            var list = snap.val() || [];
-            list.push(name);
-            db.ref('party_v2/waiting').set(list);
-            inp.value = '';
-        });
-    }
-
-    function renderWaiting(list) {
-        var area = document.getElementById('waiting-area');
-        area.innerHTML = '';
-        for (var i = 0; i < list.length; i++) {
-            var name = list[i];
-            var item = document.createElement('div');
-            item.style.cssText = "background:#3d352b;padding:5px 10px;border-radius:15px;border:1px solid var(--gold);font-size:13px;display:flex;align-items:center;gap:6px;";
-            item.innerHTML = '<span>' + name + '</span>'
-                + '<span onclick="editWaiting(' + i + ')" title="แก้ไขชื่อ" style="cursor:pointer;font-size:12px;">✏️</span>'
-                + '<span onclick="delWaiting(' + i + ')"  title="ลบ"        style="cursor:pointer;color:red;font-weight:bold;">✕</span>';
-            area.appendChild(item);
+        function editMember(pId, mIdx) {
+            db.ref('party_v2/parties/' + pId + '/members').once('value', s => {
+                const members = s.val() || [];
+                const newName = prompt("แก้ไขชื่อตัวละคร:", members[mIdx]);
+                if (!newName || newName.trim() === members[mIdx]) return;
+                members[mIdx] = newName.trim();
+                db.ref('party_v2/parties/' + pId + '/members').set(members);
+            });
         }
-    }
 
-    function editWaiting(i) {
-        db.ref('party_v2/waiting').once('value', function(snap) {
-            var list = snap.val() || [];
-            var newName = prompt("แก้ไขชื่อตัวละคร:", list[i]);
-            if (!newName || newName.trim() === list[i]) return;
-            list[i] = newName.trim();
-            db.ref('party_v2/waiting').set(list);
-        });
-    }
-
-    function delWaiting(i) {
-        db.ref('party_v2/waiting').once('value', function(snap) {
-            var list = snap.val() || [];
-            list.splice(i, 1);
-            db.ref('party_v2/waiting').set(list);
-        });
-    }
-
-    function createParty() {
-        db.ref('party_v2/parties').once('value', function(snap) {
-            var ps = snap.val() || {};
-            var id = 'p_' + Date.now();
-            db.ref('party_v2/parties/' + id).set({ name: 'Party #' + (Object.keys(ps).length + 1), members: [] });
-        });
-    }
-
-    function renderParties(parties, waiting) {
-        var grid = document.getElementById('party-grid');
-        grid.innerHTML = '';
-
-        var sorted = Object.keys(parties)
-            .map(function(id) { var o = parties[id]; o.id = id; return o; })
-            .sort(function(a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }); });
-
-        sorted.forEach(function(p) {
-            var win = document.createElement('div');
-            win.className = 'party-window';
-
-            var membersHTML = '';
-            var members = p.members || [];
-            for (var i = 0; i < members.length; i++) {
-                membersHTML += '<div class="member-slot">'
-                    + '<span>' + members[i] + '</span>'
-                    + '<div style="display:flex;gap:6px;align-items:center;">'
-                    + '<span onclick="editMember(\'' + p.id + '\',' + i + ')" title="แก้ไขชื่อ" style="cursor:pointer;font-size:12px;">✏️</span>'
-                    + '<span onclick="removeMember(\'' + p.id + '\',' + i + ')" title="นำออก" style="cursor:pointer;color:red;font-weight:bold;">X</span>'
-                    + '</div></div>';
-            }
-
-            var waitingOpts = '';
-            for (var j = 0; j < waiting.length; j++) {
-                waitingOpts += '<option value="' + j + '">' + waiting[j] + '</option>';
-            }
-
-            var safePName = p.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            win.innerHTML = '<div class="party-title">'
-                + '<span class="party-name-txt" onclick="editPartyName(\'' + p.id + '\',\'' + safePName + '\')">' + p.name + '</span>'
-                + '<span onclick="delParty(\'' + p.id + '\')" style="cursor:pointer;font-size:10px;">[ลบตี้]</span>'
-                + '</div>'
-                + '<div class="party-body">'
-                + membersHTML
-                + '<div class="add-btn" onclick="document.getElementById(\'sel-' + p.id + '\').style.display=\'block\'">+</div>'
-                + '<select id="sel-' + p.id + '" style="display:none;margin-top:5px;background:#000;color:#fff;" onchange="assignMember(\'' + p.id + '\',this)">'
-                + '<option value="">-- เลือกคน --</option>'
-                + waitingOpts
-                + '</select>'
-                + '</div>';
-            grid.appendChild(win);
-        });
-    }
-
-    function editPartyName(id, currentName) {
-        var newName = prompt("แก้ไขชื่อปาร์ตี้ (ระบบจะเรียงตามชื่อนี้):", currentName);
-        if (newName && newName !== currentName) {
-            db.ref('party_v2/parties/' + id + '/name').set(newName);
+        function assignMember(pId, sel) {
+            if(sel.value === "") return;
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let waiting = d.waiting, party = d.parties[pId];
+                if(!party.members) party.members = [];
+                const [name] = waiting.splice(sel.value, 1);
+                party.members.push(name);
+                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+            });
         }
-    }
 
-    function assignMember(pId, sel) {
-        if (sel.value === '') return;
-        db.ref('party_v2').once('value', function(snap) {
-            var d = snap.val();
-            var waiting = d.waiting || [];
-            var party = d.parties[pId];
-            if (!party.members) party.members = [];
-            var name = waiting.splice(sel.value, 1)[0];
-            party.members.push(name);
-            var upd = { waiting: waiting };
-            upd['parties/' + pId] = party;
-            db.ref('party_v2').update(upd);
-        });
-    }
+        function removeMember(pId, mIdx) {
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let party = d.parties[pId], waiting = d.waiting || [];
+                const [name] = party.members.splice(mIdx, 1);
+                waiting.push(name);
+                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+            });
+        }
 
-    function editMember(pId, mIdx) {
-        db.ref('party_v2/parties/' + pId + '/members').once('value', function(snap) {
-            var members = snap.val() || [];
-            var newName = prompt("แก้ไขชื่อตัวละคร:", members[mIdx]);
-            if (!newName || newName.trim() === members[mIdx]) return;
-            members[mIdx] = newName.trim();
-            db.ref('party_v2/parties/' + pId + '/members').set(members);
-        });
-    }
-
-    function removeMember(pId, mIdx) {
-        db.ref('party_v2').once('value', function(snap) {
-            var d = snap.val();
-            var party = d.parties[pId];
-            var waiting = d.waiting || [];
-            var name = party.members.splice(mIdx, 1)[0];
-            waiting.push(name);
-            var upd = { waiting: waiting };
-            upd['parties/' + pId] = party;
-            db.ref('party_v2').update(upd);
-        });
-    }
-
-    function delParty(id) {
-        if (!confirm('ลบปาร์ตี้และคืนสมาชิกเข้าคลัง?')) return;
-        db.ref('party_v2').once('value', function(snap) {
-            var d = snap.val();
-            var waiting = d.waiting || [];
-            var members = d.parties[id].members || [];
-            db.ref('party_v2/waiting').set(waiting.concat(members));
-            db.ref('party_v2/parties/' + id).remove();
-        });
-    }
-</script>
+        function delParty(id) {
+            if(!confirm('ลบปาร์ตี้และคืนสมาชิกเข้าคลัง?')) return;
+            db.ref('party_v2').once('value', s => {
+                const d = s.val();
+                let waiting = d.waiting || [];
+                const members = d.parties[id].members || [];
+                db.ref('party_v2/waiting').set([...waiting, ...members]);
+                db.ref('party_v2/parties/' + id).remove();
+            });
+        }
+    </script>
 </body>
 </html>
