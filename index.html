@@ -294,9 +294,23 @@
             area.innerHTML = '';
             list.forEach((name, i) => {
                 const item = document.createElement('div');
-                item.style = "background:#3d352b; padding:5px 10px; border-radius:15px; border:1px solid var(--gold); font-size:13px;";
-                item.innerHTML = `${name} <span onclick="delWaiting(${i})" style="color:red; cursor:pointer; margin-left:5px">x</span>`;
+                item.style = "background:#3d352b; padding:5px 10px; border-radius:15px; border:1px solid var(--gold); font-size:13px; display:flex; align-items:center; gap:6px;";
+                item.innerHTML = `
+                    <span>${name}</span>
+                    <span onclick="editWaiting(${i})" title="แก้ไขชื่อ" style="color:#aaa; cursor:pointer; font-size:11px;">✏️</span>
+                    <span onclick="delWaiting(${i})" title="ลบ" style="color:red; cursor:pointer;">✕</span>`;
                 area.appendChild(item);
+            });
+        }
+
+        function editWaiting(i) {
+            db.ref('party_v2/waiting').once('value', snap => {
+                const list = snap.val() || [];
+                const currentName = list[i];
+                const newName = prompt("แก้ไขชื่อตัวละคร:", currentName);
+                if (!newName || newName.trim() === currentName) return;
+                list[i] = newName.trim();
+                db.ref('party_v2/waiting').set(list);
             });
         }
 
@@ -331,7 +345,10 @@
                 const membersHTML = (p.members || []).map((m, i) => `
                     <div class="member-slot">
                         <span>${m}</span>
-                        <span onclick="removeMember('${p.id}', ${i})" style="color:red; cursor:pointer;">X</span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <span onclick="editMember('${p.id}', ${i})" title="แก้ไขชื่อ" style="color:#aaa; cursor:pointer; font-size:12px;">✏️</span>
+                            <span onclick="removeMember('${p.id}', ${i})" title="นำออก" style="color:red; cursor:pointer;">X</span>
+                        </div>
                     </div>`).join('');
 
                 win.innerHTML = `
@@ -368,6 +385,17 @@
                 const [name] = waiting.splice(sel.value, 1);
                 party.members.push(name);
                 db.ref('party_v2').update({ waiting, ['parties/' + pId]: party });
+            });
+        }
+
+        function editMember(pId, mIdx) {
+            db.ref(`party_v2/parties/${pId}/members`).once('value', snap => {
+                const members = snap.val() || [];
+                const currentName = members[mIdx];
+                const newName = prompt("แก้ไขชื่อตัวละคร:", currentName);
+                if (!newName || newName.trim() === currentName) return;
+                members[mIdx] = newName.trim();
+                db.ref(`party_v2/parties/${pId}/members`).set(members);
             });
         }
 
