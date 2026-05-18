@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WTF - Guild System Full</title>
+    <title>WTF - Guild System</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
@@ -20,7 +20,6 @@
 
         body { background-color: var(--bg-color); color: #f0e6d2; font-family: 'Tahoma', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         
-        /* Navigation */
         .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; width: 100%; max-width: 1200px; }
         .tab-btn { flex: 1; padding: 15px; background: #3d352b; border: 2px solid var(--border); color: #aaa; cursor: pointer; font-weight: bold; border-radius: 8px 8px 0 0; }
         .tab-btn.active { background: var(--panel-bg); color: var(--gold); border-bottom: 2px solid var(--gold); }
@@ -45,16 +44,18 @@
         .frag-active { border: 2px solid var(--fragment); background: #1a2433; }
         .controls { display: flex; gap: 5px; align-items: center; }
 
+        /* Admin panel — hidden by default, shown via JS */
+        #admin-auc-input { display: none; }
+
         /* Party UI */
         .party-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .party-window { background: #252a35; border: 2px solid #506070; border-radius: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .party-title { background: linear-gradient(to bottom, #4a6a9a, #2e4a7a); padding: 8px 12px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
-        .party-num-btn { background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--gold); cursor: pointer; color: var(--gold); margin-left: 5px; }
+        .party-name-txt { cursor: pointer; text-decoration: underline dotted; }
+        .party-name-txt:hover { color: var(--gold); }
         .party-body { padding: 10px; display: flex; flex-direction: column; gap: 5px; min-height: 150px; }
         .member-slot { background: rgba(0,0,0,0.3); border: 1px solid #3d4a5a; padding: 6px 10px; border-radius: 3px; display: flex; justify-content: space-between; font-size: 14px; }
         .add-btn { background: rgba(255,255,255,0.1); border: 2px dashed #506070; color: #506070; padding: 8px; text-align: center; cursor: pointer; font-size: 18px; margin-top: 10px; }
-
-        .admin-only { display: none; }
     </style>
 </head>
 <body>
@@ -70,34 +71,28 @@
             <button class="tab-btn" onclick="switchTab('party-page', this)">จัดการปาร์ตี้</button>
         </div>
 
-        <!-- หน้าประมูล (Lock เฉพาะปุ่มจัดการ) -->
+        <!-- หน้าประมูล -->
         <div id="auction-page" class="page active">
-            <div class="box admin-only">
-                <h4 style="margin:0; color:var(--gold)">แผงควบคุมการจัดการคิว</h4>
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <input type="text" id="auc-name-input" placeholder="ชื่อตัวละคร...">
+            <div class="box" id="admin-auc-input">
+                <h4 style="margin:0; color:var(--gold)">จัดการคิวประมูล</h4>
+                <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                    <input type="text" id="auc-name-input" placeholder="ชื่อตัวละคร..." style="flex:1; min-width:140px;"
+                        onkeydown="if(event.key==='Enter') addAuction(lastAucType||'card')">
                     <button onclick="addAuction('card')">+ คิวสมุด</button>
-                    <button onclick="addAuction('frag')" style="background:var(--blue-ui)">+ คิว Frag</button>
+                    <button onclick="addAuction('frag')" style="background:var(--blue-ui); border-color:#5b8dd9;">+ คิว Frag</button>
                 </div>
-                <div style="margin-top:10px; font-size: 14px;">
-                    ดรอป -> สมุด: <input type="number" id="card-limit" value="0" onchange="updateAucSettings()" style="width:50px"> 
-                    Frag: <input type="number" id="frag-limit" value="0" onchange="updateAucSettings()" style="width:50px">
+                <div style="margin-top:10px; font-size: 14px; display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+                    <span>ดรอป → สมุด: <input type="number" id="card-limit" value="0" onchange="updateAucSettings()" style="width:55px; padding:5px;"></span>
+                    <span>Frag: <input type="number" id="frag-limit" value="0" onchange="updateAucSettings()" style="width:55px; padding:5px;"></span>
                 </div>
             </div>
-
             <div class="queue-grid">
-                <div class="box">
-                    <h3 style="color:var(--highlight)">คิวสมุดการ์ด</h3>
-                    <div id="card-list"></div>
-                </div>
-                <div class="box">
-                    <h3 style="color:var(--fragment)">คิว Fragment</h3>
-                    <div id="frag-list"></div>
-                </div>
+                <div class="box"><h3 style="color:var(--highlight); margin-top:0;">คิวสมุดการ์ด</h3><div id="card-list"></div></div>
+                <div class="box"><h3 style="color:var(--fragment); margin-top:0;">คิว Fragment</h3><div id="frag-list"></div></div>
             </div>
         </div>
 
-        <!-- หน้าปาร์ตี้ (เปิดอิสระ แก้เลขตี้ได้) -->
+        <!-- หน้าจัดการปาร์ตี้ -->
         <div id="party-page" class="page">
             <div class="box">
                 <h3 style="margin:0; color:var(--gold)">1. เตรียมรายชื่อตัวละคร</h3>
@@ -108,7 +103,7 @@
                 <div id="waiting-area" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px;"></div>
             </div>
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                <h3 style="margin:0; color:var(--gold)">2. รายการปาร์ตี้ (เรียงตามเลข)</h3>
+                <h3 style="margin:0; color:var(--gold)">2. รายการปาร์ตี้ (คลิกชื่อเพื่อแก้ไข/เรียง)</h3>
                 <button onclick="createParty()" style="background:var(--highlight)">+ สร้างปาร์ตี้ใหม่</button>
             </div>
             <div id="party-grid" class="party-grid"></div>
@@ -121,7 +116,9 @@
         const db = firebase.database();
 
         let isAdmin = false;
+        let lastAucType = 'card';
 
+        // ==================== TAB ====================
         function switchTab(id, btn) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -129,128 +126,158 @@
             btn.classList.add('active');
         }
 
-        // --- Auth System ---
+        // ==================== ADMIN ====================
         function toggleAdmin() {
-            if (prompt("กรุณาใส่รหัสผ่าน (Manager):") === 'wtf') {
+            const pw = prompt("รหัสผ่าน:");
+            if (pw === null) return; // กด Cancel
+            if (pw === 'wtf') {
                 isAdmin = true;
                 document.getElementById('unlock-btn').style.display = 'none';
                 document.getElementById('lock-btn').style.display = 'inline-block';
-                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-                syncAll();
-            } else { alert("รหัสผิด!"); }
+                document.getElementById('admin-auc-input').style.display = 'block';
+            } else {
+                alert("รหัสผิด!");
+            }
         }
 
         function lockAdmin() {
             isAdmin = false;
             document.getElementById('unlock-btn').style.display = 'inline-block';
             document.getElementById('lock-btn').style.display = 'none';
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-            syncAll();
+            document.getElementById('admin-auc-input').style.display = 'none';
         }
 
-        function syncAll() {
-            db.ref('auction_v2').once('value', s => {
-                const d = s.val() || {};
-                renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
-                renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
-            });
-        }
+        // ==================== AUCTION REALTIME ====================
+        db.ref('auction_v2').on('value', snap => {
+            const d = snap.val() || {};
+            const cardQ  = d.cardQ || [];
+            const fragQ  = d.fragQ || [];
+            const cardL  = d.cardL  || 0;
+            const fragL  = d.fragL  || 0;
 
-        // --- Listener ---
-        db.ref('auction_v2').on('value', s => {
-            const d = s.val() || {};
-            renderAuction('card-list', d.cardQ || [], d.cardL || 0, 'card');
-            renderAuction('frag-list', d.fragQ || [], d.fragL || 0, 'frag');
-            document.getElementById('card-limit').value = d.cardL || 0;
-            document.getElementById('frag-limit').value = d.fragL || 0;
+            renderAuction('card-list', cardQ, cardL, 'card');
+            renderAuction('frag-list', fragQ, fragL, 'frag');
+
+            // อัปเดต input limit เฉพาะตอน admin เปิดอยู่
+            const cardLimitEl = document.getElementById('card-limit');
+            const fragLimitEl = document.getElementById('frag-limit');
+            if (document.activeElement !== cardLimitEl) cardLimitEl.value = cardL;
+            if (document.activeElement !== fragLimitEl) fragLimitEl.value = fragL;
         });
 
-        db.ref('party_v2').on('value', s => {
-            const d = s.val() || {};
-            renderWaiting(d.waiting || []);
-            renderParties(d.parties || {}, d.waiting || []);
-        });
+        function renderAuction(containerId, queue, limit, type) {
+            const el = document.getElementById(containerId);
+            el.innerHTML = '';
 
-        // --- Auction Logic ---
-        function renderAuction(id, q, limit, type) {
-            const el = document.getElementById(id); el.innerHTML = '';
-            q.forEach((name, i) => {
+            if (queue.length === 0) {
+                el.innerHTML = '<div style="color:#666; font-size:13px; padding:10px;">ยังไม่มีคิว</div>';
+                return;
+            }
+
+            queue.forEach((name, i) => {
                 const active = i < limit;
                 const div = document.createElement('div');
                 div.className = `queue-item ${active ? (type === 'card' ? 'card-active' : 'frag-active') : ''}`;
-                
-                let controls = isAdmin ? `
+
+                const adminControls = isAdmin ? `
                     <div class="controls">
-                        <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)">↑</button>
-                        <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)">↓</button>
-                        ${active ? `<button onclick="doneAuction('${type}',${i})" style="font-size:10px">รับแล้ว</button>` : ''}
-                        <button onclick="delAuction('${type}',${i})" class="btn-red" style="font-size:10px">X</button>
+                        <button class="btn-move" onclick="moveStep('${type}', ${i}, -1)" title="ขึ้น">↑</button>
+                        <button class="btn-move" onclick="moveStep('${type}', ${i}, 1)"  title="ลง">↓</button>
+                        ${active ? `<button onclick="doneAuction('${type}', ${i})" style="font-size:10px; background:linear-gradient(to bottom,#2d6a2d,#1a4a1a); border-color:#5c5;">✓ รับแล้ว</button>` : ''}
+                        <button onclick="delAuction('${type}', ${i})" class="btn-red" style="font-size:10px; padding:4px 8px;">✕</button>
                     </div>` : '';
 
-                div.innerHTML = `<span>#${i+1} ${name}</span> ${controls}`;
+                div.innerHTML = `
+                    <span style="font-size:14px;">
+                        <span style="color:#888; margin-right:6px;">#${i + 1}</span>
+                        <strong>${name}</strong>
+                        ${active ? `<span style="font-size:11px; margin-left:6px; color:${type === 'card' ? 'var(--highlight)' : 'var(--fragment)'};">● แอคทีฟ</span>` : ''}
+                    </span>
+                    ${adminControls}`;
                 el.appendChild(div);
             });
-            document.getElementById('card-limit').disabled = !isAdmin;
-            document.getElementById('frag-limit').disabled = !isAdmin;
         }
 
         function addAuction(type) {
+            if (!isAdmin) return;
+            lastAucType = type;
             const inp = document.getElementById('auc-name-input');
-            if(!inp.value || !isAdmin) return;
-            const path = type === 'card' ? 'cardQ' : 'fragQ';
-            db.ref('auction_v2/' + path).once('value', s => {
-                const q = s.val() || []; q.push(inp.value);
-                db.ref('auction_v2/' + path).set(q); inp.value = '';
+            const name = inp.value.trim();
+            if (!name) { inp.focus(); return; }
+
+            const path = `auction_v2/${type === 'card' ? 'cardQ' : 'fragQ'}`;
+            db.ref(path).once('value', snap => {
+                const q = snap.val() || [];
+                q.push(name);
+                db.ref(path).set(q).then(() => { inp.value = ''; inp.focus(); });
             });
         }
 
         function moveStep(type, index, step) {
-            const path = type === 'card' ? 'cardQ' : 'fragQ';
-            db.ref('auction_v2/' + path).once('value', s => {
-                let q = s.val() || [];
-                let newIndex = index + step;
+            if (!isAdmin) return;
+            const path = `auction_v2/${type === 'card' ? 'cardQ' : 'fragQ'}`;
+            db.ref(path).once('value', snap => {
+                const q = snap.val() || [];
+                const newIndex = index + step;
                 if (newIndex >= 0 && newIndex < q.length) {
                     [q[index], q[newIndex]] = [q[newIndex], q[index]];
-                    db.ref('auction_v2/' + path).set(q);
+                    db.ref(path).set(q);
                 }
             });
         }
 
         function doneAuction(type, i) {
-            const path = type === 'card' ? 'cardQ' : 'fragQ';
-            db.ref('auction_v2/' + path).once('value', s => {
-                let q = s.val(); const [item] = q.splice(i, 1); q.push(item);
-                db.ref('auction_v2/' + path).set(q);
+            if (!isAdmin) return;
+            const path = `auction_v2/${type === 'card' ? 'cardQ' : 'fragQ'}`;
+            db.ref(path).once('value', snap => {
+                const q = snap.val() || [];
+                const [item] = q.splice(i, 1);
+                q.push(item);
+                db.ref(path).set(q);
             });
         }
 
         function delAuction(type, i) {
-            const path = type === 'card' ? 'cardQ' : 'fragQ';
-            db.ref('auction_v2/' + path).once('value', s => {
-                let q = s.val(); q.splice(i, 1);
-                db.ref('auction_v2/' + path).set(q);
+            if (!isAdmin) return;
+            if (!confirm('ลบออกจากคิว?')) return;
+            const path = `auction_v2/${type === 'card' ? 'cardQ' : 'fragQ'}`;
+            db.ref(path).once('value', snap => {
+                const q = snap.val() || [];
+                q.splice(i, 1);
+                db.ref(path).set(q);
             });
         }
 
         function updateAucSettings() {
+            if (!isAdmin) return;
             db.ref('auction_v2').update({
-                cardL: parseInt(document.getElementById('card-limit').value),
-                fragL: parseInt(document.getElementById('frag-limit').value)
+                cardL: parseInt(document.getElementById('card-limit').value) || 0,
+                fragL: parseInt(document.getElementById('frag-limit').value) || 0
             });
         }
 
-        // --- Party Logic ---
+        // ==================== PARTY REALTIME ====================
+        db.ref('party_v2').on('value', snap => {
+            const d = snap.val() || {};
+            renderWaiting(d.waiting || []);
+            renderParties(d.parties || {}, d.waiting || []);
+        });
+
         function addWaiting() {
             const inp = document.getElementById('p-waiting-input');
-            if(!inp.value) return;
-            db.ref('party_v2/waiting').once('value', s => {
-                const list = s.val() || []; list.push(inp.value);
-                db.ref('party_v2/waiting').set(list); inp.value = '';
+            const name = inp.value.trim();
+            if (!name) return;
+            db.ref('party_v2/waiting').once('value', snap => {
+                const list = snap.val() || [];
+                list.push(name);
+                db.ref('party_v2/waiting').set(list);
+                inp.value = '';
             });
         }
 
         function renderWaiting(list) {
-            const area = document.getElementById('waiting-area'); area.innerHTML = '';
+            const area = document.getElementById('waiting-area');
+            area.innerHTML = '';
             list.forEach((name, i) => {
                 const item = document.createElement('div');
                 item.style = "background:#3d352b; padding:5px 10px; border-radius:15px; border:1px solid var(--gold); font-size:13px;";
@@ -260,36 +287,43 @@
         }
 
         function delWaiting(i) {
-            db.ref('party_v2/waiting').once('value', s => {
-                let list = s.val(); list.splice(i, 1);
+            db.ref('party_v2/waiting').once('value', snap => {
+                let list = snap.val();
+                list.splice(i, 1);
                 db.ref('party_v2/waiting').set(list);
             });
         }
 
         function createParty() {
-            db.ref('party_v2/parties').once('value', s => {
-                const ps = s.val() || {};
+            db.ref('party_v2/parties').once('value', snap => {
+                const ps = snap.val() || {};
                 const id = 'p_' + Date.now();
-                db.ref('party_v2/parties/' + id).set({ p_num: Object.keys(ps).length + 1, members: [] });
+                db.ref('party_v2/parties/' + id).set({ name: 'Party #' + (Object.keys(ps).length + 1), members: [] });
             });
         }
 
         function renderParties(parties, waiting) {
-            const grid = document.getElementById('party-grid'); grid.innerHTML = '';
-            const sorted = Object.keys(parties).map(id => ({ id, ...parties[id] }))
-                .sort((a, b) => (parseInt(a.p_num) || 0) - (parseInt(b.p_num) || 0));
+            const grid = document.getElementById('party-grid');
+            grid.innerHTML = '';
 
-            sorted.forEach(p => {
+            const sortedParties = Object.keys(parties)
+                .map(id => ({ id, ...parties[id] }))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+            sortedParties.forEach(p => {
                 const win = document.createElement('div');
                 win.className = 'party-window';
+
                 const membersHTML = (p.members || []).map((m, i) => `
-                    <div class="member-slot"><span>${m}</span><span onclick="removeMember('${p.id}',${i})" style="color:red; cursor:pointer">X</span></div>
-                `).join('');
+                    <div class="member-slot">
+                        <span>${m}</span>
+                        <span onclick="removeMember('${p.id}', ${i})" style="color:red; cursor:pointer;">X</span>
+                    </div>`).join('');
 
                 win.innerHTML = `
                     <div class="party-title">
-                        <span>Party # <span class="party-num-btn" onclick="editPartyNum('${p.id}', ${p.p_num})">${p.p_num}</span></span>
-                        <span onclick="delParty('${p.id}')" style="cursor:pointer; font-size:10px">[ลบตี้]</span>
+                        <span class="party-name-txt" onclick="editPartyName('${p.id}', '${p.name}')">${p.name}</span>
+                        <span onclick="delParty('${p.id}')" style="cursor:pointer; font-size:10px;">[ลบตี้]</span>
                     </div>
                     <div class="party-body">
                         ${membersHTML}
@@ -303,39 +337,41 @@
             });
         }
 
-        function editPartyNum(id, currentNum) {
-            const newNum = prompt("ระบุเลขปาร์ตี้ใหม่ (ตัวเลข):", currentNum);
-            if (newNum !== null && newNum !== "") {
-                db.ref(`party_v2/parties/${id}/p_num`).set(parseInt(newNum));
+        function editPartyName(id, currentName) {
+            const newName = prompt("แก้ไขชื่อปาร์ตี้ (ระบบจะเรียงตามชื่อนี้):", currentName);
+            if (newName && newName !== currentName) {
+                db.ref(`party_v2/parties/${id}/name`).set(newName);
             }
         }
 
         function assignMember(pId, sel) {
-            if(sel.value === "") return;
-            db.ref('party_v2').once('value', s => {
-                const d = s.val();
-                let waiting = d.waiting, party = d.parties[pId];
-                if(!party.members) party.members = [];
+            if (sel.value === "") return;
+            db.ref('party_v2').once('value', snap => {
+                const d = snap.val();
+                let waiting = d.waiting || [];
+                let party = d.parties[pId];
+                if (!party.members) party.members = [];
                 const [name] = waiting.splice(sel.value, 1);
                 party.members.push(name);
-                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+                db.ref('party_v2').update({ waiting, ['parties/' + pId]: party });
             });
         }
 
         function removeMember(pId, mIdx) {
-            db.ref('party_v2').once('value', s => {
-                const d = s.val();
-                let party = d.parties[pId], waiting = d.waiting || [];
+            db.ref('party_v2').once('value', snap => {
+                const d = snap.val();
+                let party = d.parties[pId];
+                let waiting = d.waiting || [];
                 const [name] = party.members.splice(mIdx, 1);
                 waiting.push(name);
-                db.ref('party_v2').update({ waiting, ['parties/'+pId]: party });
+                db.ref('party_v2').update({ waiting, ['parties/' + pId]: party });
             });
         }
 
         function delParty(id) {
-            if(!confirm('ลบปาร์ตี้?')) return;
-            db.ref('party_v2').once('value', s => {
-                const d = s.val();
+            if (!confirm('ลบปาร์ตี้และคืนสมาชิกเข้าคลัง?')) return;
+            db.ref('party_v2').once('value', snap => {
+                const d = snap.val();
                 let waiting = d.waiting || [];
                 const members = d.parties[id].members || [];
                 db.ref('party_v2/waiting').set([...waiting, ...members]);
